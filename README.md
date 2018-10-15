@@ -17,3 +17,6 @@ To follow: selection of output file as an argument, summary options for week, mo
 
  **Note** This script is designed to help monitor healthy levels of consumption, not as a scorekeeper.
  
+ #### stockCheck.py
+ 
+ Helps check a list for out of date beers, imminent expiry and balance
