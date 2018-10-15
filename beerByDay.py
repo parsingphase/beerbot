@@ -78,24 +78,51 @@ source_data = json.loads(file_contents(source))
 
 daily = {}
 
+keys = ['drinks', 'beverage_ml', 'alcohol_ml', 'units', 'estimated']
+
 for checkin in source_data:
     # fields of interest: comment, created_at, beer_abv, serving_type
     abv = float(checkin['beer_abv'])
     created_at = parse_date(checkin['created_at'])  # <class 'datetime.datetime'>
     date = created_at.date().isoformat()
+
+    if date not in daily:
+        daily[date] = {
+            'drinks': 0,
+            'units': 0,
+            'alcohol_ml': 0,
+            'beverage_ml': 0,
+            'estimated': ''
+        }
+
+    daily[date]['drinks'] += 1
+
     measure = measure_from_comment(checkin['comment'])
     if measure is None:
         measure = measure_from_serving(checkin['serving_type'])
+        daily[date]['estimated'] = '*'
 
-    if measure and abv:
-        alcohol_volume = float(measure) * abv / 100
+    if measure:
+        daily[date]['beverage_ml'] += measure
+        if abv:
+            alcohol_volume = float(measure) * abv / 100
+            daily[date]['alcohol_ml'] += alcohol_volume
+            daily[date]['units'] += alcohol_volume / 10
 
-        if date not in daily:
-            daily[date] = 0
+    else:
+        daily[date]['estimated'] = '**'
 
-        daily[date] += alcohol_volume / 10
+# round numerics to 1dp
+for date in daily:
+    for k in daily[date]:
+        if k != 'estimated':
+            daily[date][k] = round(daily[date][k], 1)
 
-daily = {k: round(daily.get(k), 1) for k in daily}
+print('date,',', '.join(keys))
 
-for k in daily:
-    print(','.join([k, str(daily[k])]))
+for date in daily:
+    print(date, end='')
+    for k in keys:
+        print(',', daily[date][k], end='')
+
+    print()
