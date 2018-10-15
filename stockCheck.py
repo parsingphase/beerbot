@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import csv
 import sys
 import json
 from typing import Optional
@@ -43,10 +44,20 @@ for item in source_data:
     else:
         slices['future'].append(item)
 
+writer = csv.writer(sys.stdout)
+
 for k in slices:
     print(thresholds[k]['description'] + ':', len(slices[k]), 'items')
     if len(slices[k]) == 0:
         print('(NONE)')
     else:
         for item in slices[k]:
-            print(', '.join([item['best_by_date_iso'], item['quantity'], item['brewery_name'], item['beer_name']]))
+            writer.writerow(
+                [
+                    item['best_by_date_iso'],
+                    item['quantity'],
+                    item['brewery_name'],
+                    item['beer_name'],
+                    item['beer_type']
+                ]
+            )
