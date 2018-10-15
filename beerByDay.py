@@ -15,14 +15,6 @@ def file_contents(file_path: str) -> Optional[str]:
     return ''.join(contents)
 
 
-source = sys.argv[1]
-
-source_data = json.loads(file_contents(source))
-
-
-# source_data = source_data[-20:]
-
-
 def parse_measure(measure_string):
     divisors = {'quarter': 4, 'third': 3, 'half': 2}
     divisors_match = '|'.join(divisors.keys())
@@ -45,9 +37,7 @@ def parse_measure(measure_string):
 
     if match:
         match_dict = match.groupdict()
-        # print(match_dict)
         unit = match_dict['unit'] if 'unit' in match_dict and match_dict['unit'] is not None else DEFAULT_UNIT
-        # print('unit', unit)
         quantity = units[unit]
         if 'quantity' in match_dict:
             quantity *= int(match_dict['quantity'])
@@ -56,7 +46,6 @@ def parse_measure(measure_string):
         elif 'fraction' in match_dict:
             fraction_parts = [int(s) for s in match_dict['fraction'].split('/')]
             quantity = quantity * fraction_parts[0] / fraction_parts[1]
-
     return int(quantity)
 
 
@@ -67,8 +56,6 @@ def measure_from_comment(comment: str) -> Optional[str]:
         drink_measure = parse_measure(match_string)
     else:
         drink_measure = None
-
-    # print('measure', match_string, drink_measure)
     return drink_measure
 
 
@@ -82,18 +69,18 @@ def measure_from_serving(serving: str):
         'can': 330
     }
     drink_measure = defaults[serving] if serving in defaults else None
-    # print('measure *', serving, drink_measure)
     return drink_measure
 
 
-sum_by_day = {}
+source = sys.argv[1]
+
+source_data = json.loads(file_contents(source))
+
+daily = {}
 
 for checkin in source_data:
-    # print(json.dumps(checkin))
-    # fields of interest: comment, created_at (2016-05-16 19:10:00), beer_abv, serving_type
+    # fields of interest: comment, created_at, beer_abv, serving_type
     abv = float(checkin['beer_abv'])
-    # print()
-    # print(checkin['comment'], abv)
     created_at = parse_date(checkin['created_at'])  # <class 'datetime.datetime'>
     date = created_at.date().isoformat()
     measure = measure_from_comment(checkin['comment'])
@@ -102,18 +89,13 @@ for checkin in source_data:
 
     if measure and abv:
         alcohol_volume = float(measure) * abv / 100
-        # print('Alc: ', int(alcohol_volume), 'ml')
-        # print('     ', round(alcohol_volume / 10, 1), 'units')
 
-        if date in sum_by_day:
-            sum_by_day[date] += alcohol_volume / 10
-        else:
-            sum_by_day[date] = alcohol_volume / 10
-    # break
+        if date not in daily:
+            daily[date] = 0
 
-sum_by_day = {k: round(sum_by_day.get(k), 1) for k in sum_by_day}
+        daily[date] += alcohol_volume / 10
 
-# print(sum_by_day)
+daily = {k: round(daily.get(k), 1) for k in daily}
 
-for k in sum_by_day:
-    print(','.join([k, str(sum_by_day[k])]))
+for k in daily:
+    print(','.join([k, str(daily[k])]))
