@@ -14,7 +14,19 @@ def file_contents(file_path: str) -> Optional[str]:
     return ''.join(contents)
 
 
+def usage():
+    print()
+    print('  Usage: {} SOURCEFILE.json [OUTPUTFILE.csv]'.format(sys.argv[0]))
+    print('         Summarise expiry dates and types of beers on a list')
+    print()
+
+
+if len(sys.argv) < 2 or len(sys.argv) > 3:
+    usage()
+    exit(1)
+
 source = sys.argv[1]
+dest = sys.argv[2] if len(sys.argv) == 3 else None
 
 source_data = json.loads(file_contents(source))
 
@@ -56,16 +68,23 @@ for style in styles:
 
 style_list.sort(key=lambda b: (0 - b['count'], b['style']))
 
-writer = csv.writer(sys.stdout)
+if dest:
+    output_handle = open(dest, 'w')
+else:
+    output_handle = sys.stdout
+
+writer = csv.writer(output_handle)
 
 for k in slices:
-    print(
-        thresholds[k]['description'] + ':',
-        sum([int(s['quantity']) for s in slices[k]]),
-        'item(s) of', len(slices[k]), 'beer(s)'
+    writer.writerow(
+        [
+            '%s: %d item(s) of %d beer(s)' % (
+                thresholds[k]['description'], sum([int(s['quantity']) for s in slices[k]]), len(slices[k]),
+            )
+        ]
     )
     if len(slices[k]) == 0:
-        print('(NONE)')
+        writer.writerow(['(NONE)'])
     else:
         for item in slices[k]:
             writer.writerow(
@@ -76,12 +95,16 @@ for k in slices:
                     item['beer_name'],
                     item['beer_type'],
                     '%.1f%%' % float(item['beer_abv']),
+                    item['container'],
                 ]
             )
 
 for i in range(5):
-    print(',')
+    writer.writerow([''])
 
-print('Styles')
+writer.writerow(['Styles'])
 for style_row in style_list:
     writer.writerow([style_row['style'], style_row['count']])
+
+if dest:
+    output_handle.close()
