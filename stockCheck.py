@@ -30,8 +30,14 @@ thresholds = {
 }
 
 slices = {'undated': [], 'now': [], 'month': [], 'two': [], 'future': []}
+styles = {}
 
 for item in source_data:
+    style = item['beer_type'].split(' -')[0].strip()
+    if not style in styles:
+        styles[style] = 0
+    styles[style] += 1
+
     due = item['best_by_date_iso']
     if due <= thresholds['undated']['ends']:
         slices['undated'].append(item)
@@ -43,6 +49,12 @@ for item in source_data:
         slices['two'].append(item)
     else:
         slices['future'].append(item)
+
+style_list = []
+for style in styles:
+    style_list.append({'style': style, 'count': styles[style]})
+
+style_list.sort(key=lambda b: (0 - b['count'], b['style']))
 
 writer = csv.writer(sys.stdout)
 
@@ -61,3 +73,10 @@ for k in slices:
                     item['beer_type']
                 ]
             )
+
+for i in range(10):
+    print()
+
+print('Styles')
+for style_row in style_list:
+    writer.writerow([style_row['style'], style_row['count']])
