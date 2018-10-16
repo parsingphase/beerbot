@@ -36,7 +36,7 @@ for item in source_data:
     style = item['beer_type'].split(' -')[0].strip()
     if not style in styles:
         styles[style] = 0
-    styles[style] += 1
+    styles[style] += int(item['quantity'])
 
     due = item['best_by_date_iso']
     if due <= thresholds['undated']['ends']:
@@ -59,7 +59,11 @@ style_list.sort(key=lambda b: (0 - b['count'], b['style']))
 writer = csv.writer(sys.stdout)
 
 for k in slices:
-    print(thresholds[k]['description'] + ':', len(slices[k]), 'items')
+    print(
+        thresholds[k]['description'] + ':',
+        sum([int(s['quantity']) for s in slices[k]]),
+        'item(s) of', len(slices[k]), 'beer(s)'
+    )
     if len(slices[k]) == 0:
         print('(NONE)')
     else:
@@ -70,12 +74,13 @@ for k in slices:
                     item['quantity'],
                     item['brewery_name'],
                     item['beer_name'],
-                    item['beer_type']
+                    item['beer_type'],
+                    '%.1f%%' % float(item['beer_abv']),
                 ]
             )
 
-for i in range(10):
-    print()
+for i in range(5):
+    print(',')
 
 print('Styles')
 for style_row in style_list:
