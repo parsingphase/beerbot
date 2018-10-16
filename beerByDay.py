@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import csv
 import re
 import sys
@@ -9,13 +10,6 @@ from datetime import timedelta
 from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
 
 DEFAULT_UNIT = 'pint'
-
-
-def usage():
-    print()
-    print('  Usage: {} SOURCEFILE.json [OUTPUTFILE.csv]'.format(sys.argv[0]))
-    print('         Analyse ongoing consumption of alcoholic drinks')
-    print()
 
 
 def file_contents(file_path: str) -> Optional[str]:
@@ -81,12 +75,18 @@ def measure_from_serving(serving: str):
     return drink_measure
 
 
-if len(sys.argv) < 2 or len(sys.argv) > 3:
-    usage()
-    exit(1)
+parser = argparse.ArgumentParser(
+    description='Analyse consumption of alcoholic drinks from an Untappd JSON export file',
+    usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--weekly] [--help]'
+)
+parser.add_argument('source', help='Path to source file (export.json)')
+parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
+parser.add_argument('--weekly', help='Count by week rather than day', action='store_true')
+args = parser.parse_args()
 
-source = sys.argv[1]
-dest = sys.argv[2] if len(sys.argv) == 3 else None
+source = args.source
+dest = args.output
+week_per_row = args.weekly
 
 source_data = json.loads(file_contents(source))
 
@@ -163,31 +163,29 @@ for date_key in daily:
             weekly[week_key][k] += daily[date_key][k]
             daily[date_key][k] = round(daily[date_key][k], 1)
 
-row = ['date'] + keys
-writer.writerow(row)
-
-for date_key in daily:
-    row = [date_key]
-    for k in keys:
-        row.append(daily[date_key][k])
-
+if week_per_row:
+    row = ['week', 'commencing'] + keys
     writer.writerow(row)
 
-for i in range(5):
-    writer.writerow([''])
+    for week_key in weekly:
+        row = [week_key, weekly[week_key]['commencing']]
+        for k in keys:
+            cell_value = weekly[week_key][k]
+            if k != 'estimated':
+                cell_value = round(cell_value, 1)
+            row.append(cell_value)
 
-row = ['week', 'commencing'] + keys
-writer.writerow(row)
-
-for week_key in weekly:
-    row = [week_key, weekly[week_key]['commencing']]
-    for k in keys:
-        cell_value = weekly[week_key][k]
-        if k != 'estimated':
-            cell_value = round(cell_value, 1)
-        row.append(cell_value)
-
+        writer.writerow(row)
+else:
+    row = ['date'] + keys
     writer.writerow(row)
+
+    for date_key in daily:
+        row = [date_key]
+        for k in keys:
+            row.append(daily[date_key][k])
+
+        writer.writerow(row)
 
 if dest:
     output_handle.close()

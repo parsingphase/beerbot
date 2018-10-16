@@ -11,9 +11,9 @@ Otherwise standard sizes are guessed from the serving type; edit these default v
 
 Usage:
 
-    ./beerByDay.py data/input.json data/output.csv
-
-To follow: selection of output file as an argument, summary options for week, month
+    ./beerByDay.py data/input.json --output data/output.csv [--weekly]
+    
+Run with `--help` for further details
 
  **Note** This script is designed to help monitor healthy levels of consumption, not as a scorekeeper.
  
@@ -26,7 +26,9 @@ To be effective, you'll need to populate best before dates, containers and quant
 
 Usage:
 
-    ./stockCheck.py data/input.json data/output.csv
+    ./stockCheck.py data/input.json --output data/output.csv
+
+Run with `--help` for further details
 
 ## Installation and requirements
 
@@ -43,4 +45,4 @@ To install code & dependencies:
 To run code, for example in a pipenv shell or a virtualenv:
     
     pipenv shell
-    ./stockCheck.py data/input.json data/output.csv     
+    ./stockCheck.py data/input.json

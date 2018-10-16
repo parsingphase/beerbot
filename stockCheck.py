@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import csv
 import sys
 import json
@@ -14,19 +15,16 @@ def file_contents(file_path: str) -> Optional[str]:
     return ''.join(contents)
 
 
-def usage():
-    print()
-    print('  Usage: {} SOURCEFILE.json [OUTPUTFILE.csv]'.format(sys.argv[0]))
-    print('         Summarise expiry dates and types of beers on a list')
-    print()
+parser = argparse.ArgumentParser(
+    description='Summarise expiry dates and types of beers on a list',
+    usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--help]'
+)
+parser.add_argument('source', help='Path to source file (export.json)')
+parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
+args = parser.parse_args()
 
-
-if len(sys.argv) < 2 or len(sys.argv) > 3:
-    usage()
-    exit(1)
-
-source = sys.argv[1]
-dest = sys.argv[2] if len(sys.argv) == 3 else None
+source = args.source
+dest = args.output
 
 source_data = json.loads(file_contents(source))
 
