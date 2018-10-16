@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import csv
 import re
 import sys
 import json
@@ -7,6 +8,13 @@ from typing import Optional
 from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
 
 DEFAULT_UNIT = 'pint'
+
+
+def usage():
+    print()
+    print('  Usage: {} SOURCEFILE.json [OUTPUTFILE.csv]'.format(sys.argv[0]))
+    print('         Analyse ongoing consumption of alcoholic drinks')
+    print()
 
 
 def file_contents(file_path: str) -> Optional[str]:
@@ -72,9 +80,21 @@ def measure_from_serving(serving: str):
     return drink_measure
 
 
+if len(sys.argv) < 2 or len(sys.argv) > 3:
+    usage()
+    exit(1)
+
 source = sys.argv[1]
+dest = sys.argv[2] if len(sys.argv) == 3 else None
 
 source_data = json.loads(file_contents(source))
+
+if dest:
+    output_handle = open(dest, 'w')
+else:
+    output_handle = sys.stdout
+
+writer = csv.writer(output_handle)
 
 daily = {}
 
@@ -118,11 +138,15 @@ for date in daily:
         if k != 'estimated':
             daily[date][k] = round(daily[date][k], 1)
 
-print('date,',', '.join(keys))
+row = ['date'] + keys
+writer.writerow(row)
 
 for date in daily:
-    print(date, end='')
+    row = [date]
     for k in keys:
-        print(',', daily[date][k], end='')
+        row.append(daily[date][k])
 
-    print()
+    writer.writerow(row)
+
+if dest:
+    output_handle.close()
