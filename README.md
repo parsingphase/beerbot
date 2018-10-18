@@ -2,22 +2,22 @@
 
 Tools for processing [Untappd Supporter](https://untappd.com/supporter) export data
 
-#### beerByDay.py
+#### imbibed.py
 
 Build a CSV of daily & weekly consumption from your Beer History JSON export.
 
 To increase accuracy, include the measure size in square brackets in your checkin comments, eg `[third], [300ml], [2/3pint]`.
-Otherwise standard sizes are guessed from the serving type; edit these default values to your needs in `measure_from_serving()`.
+Otherwise standard sizes are guessed from the serving type; edit these default values to your needs.
 
 Usage:
 
-    ./beerByDay.py data/input.json --output data/output.csv [--weekly]
+    ./imbibed.py data/input.json --output data/output.csv [--weekly]
     
 Run with `--help` for further details
 
  **Note** This script is designed to help monitor healthy levels of consumption, not as a scorekeeper.
  
-#### stockCheck.py
+#### stock_check.py
  
 Generate a CSV taplist of beers, ordered by expiry date, from a JSON export of a detailed list, plus a summary of styles in
 your collection.
@@ -26,7 +26,7 @@ To be effective, you'll need to populate best before dates, containers and quant
 
 Usage:
 
-    ./stockCheck.py data/input.json --output data/output.csv
+    ./stock_check.py data/input.json --output data/output.csv
 
 Run with `--help` for further details
 
@@ -45,7 +45,7 @@ To install code & dependencies:
 To run code, for example in a pipenv shell or a virtualenv:
     
     pipenv shell
-    ./stockCheck.py data/input.json
+    ./stock_check.py data/input.json
     
 ### Package & update Lambda:
 
