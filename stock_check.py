@@ -4,6 +4,7 @@ import argparse
 import csv
 import sys
 import json
+import matplotlib.pyplot as plt
 from typing import Optional
 from datetime import date
 from dateutil.relativedelta import relativedelta
@@ -63,6 +64,7 @@ def build_dated_list_summary(source_data: list, output_handle: TextIO) -> None:
             slices['two'].append(item)
         else:
             slices['future'].append(item)
+
     style_list = []
     for style in styles:
         style_list.append({'style': style, 'count': styles[style]})
@@ -92,11 +94,28 @@ def build_dated_list_summary(source_data: list, output_handle: TextIO) -> None:
                         item['container'],
                     ]
                 )
+
     for i in range(5):
         writer.writerow([''])
+
     writer.writerow(['Styles'])
     for style_row in style_list:
         writer.writerow([style_row['style'], style_row['count']])
+
+    pie_file = 'tmp/styles.png'
+    plot_styles_pie(style_list, pie_file)
+
+
+def plot_styles_pie(style_list: list, pie_file: str):
+    plot_values = []
+    plot_keys = []
+    for style_row in style_list:
+        plot_keys.append(style_row['style'])
+        plot_values.append(style_row['count'])
+    fig1, ax1 = plt.subplots()
+    ax1.pie(plot_values, labels=plot_keys)
+    ax1.axis('equal')
+    plt.savefig(pie_file)
 
 
 def parse_cli_args() -> argparse.Namespace:
