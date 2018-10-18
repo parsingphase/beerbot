@@ -98,8 +98,6 @@ def build_dated_list_summary(source_data: list, output_handle: TextIO) -> None:
     for style_row in style_list:
         writer.writerow([style_row['style'], style_row['count']])
 
-    output_handle.close()
-
 
 def parse_cli_args() -> argparse.Namespace:
     """
@@ -131,6 +129,9 @@ def run_cli():
         output_handle = sys.stdout
     source_data = json.loads(file_contents(source))
     build_dated_list_summary(source_data, output_handle)
+
+    if dest:
+        output_handle.close()
 
 
 if __name__ == '__main__':
