@@ -29,6 +29,7 @@ rm -rf "${BUILD_DIR}/lambda.zip" "${BUILD_DIR}/lambda"
 
 cp lambda.py "${TMP_DIR}/lambda_function.py"
 cp stock_check.py "${TMP_DIR}"
+cp imbibed.py "${TMP_DIR}"
 
 cd "${TMP_DIR}"
 pip install -t . requests

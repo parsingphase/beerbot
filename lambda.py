@@ -3,6 +3,7 @@ import json
 import re
 import requests
 import stock_check
+import imbibed
 
 from botocore.exceptions import ClientError
 from email.parser import Parser as EmailParser
@@ -49,12 +50,8 @@ def lambda_handler(event, context):
                 raise Exception('Cannot find message')
 
             message_text = message_payload.get_payload(decode=True).decode('utf-8')
-
             export_type = detect_export_type(message_text)
-
-            download_link_match = re.search('You can download your data export here: (https:\S+)', message_text)
-
-            download_link = download_link_match[1]
+            download_link = detect_download_link(message_text)
 
             r = requests.get(download_link)
             export_data = r.content.decode('utf-8')  # string
@@ -65,8 +62,28 @@ def lambda_handler(event, context):
                 body = 'BeerBot found a list export in the email you sent and has used it to generate a stock list.'
                 send_email_response(reply_to, body, csv_buffer, 'beerbot-stocklist.csv')
 
+            elif export_type == EXPORT_TYPE_CHECKINS:
+                csv_buffer = StringIO()
+                imbibed.build_intake_summary(json.loads(export_data), csv_buffer, True)
+                body = 'BeerBot found a check-in export in the email you sent and created a weekly summary.'
+                send_email_response(reply_to, body, csv_buffer, 'beerbot-weekly-summary.csv')
+
             else:
                 raise Exception('Unfamiliar export type: "%s"' % export_type)
+
+
+def detect_download_link(message_text: str) -> Optional[str]:
+    """
+    Find the download link in a forwarded message
+    Args:
+        message_text:
+
+    Returns:
+        url
+    """
+    download_link_match = re.search('You can download your data export here: (https:\S+)', message_text)
+    download_link = download_link_match[1]
+    return download_link
 
 
 def detect_export_type(message_text: str) -> Optional[str]:
@@ -82,7 +99,7 @@ def detect_export_type(message_text: str) -> Optional[str]:
     export_description = export_match[1]  # 'a list' or 'your check-ins'
     if export_description == 'a list':
         export_type = EXPORT_TYPE_LIST
-    elif export_description == 'your checkins':
+    elif export_description == 'your check-ins':
         export_type = EXPORT_TYPE_CHECKINS
     else:
         raise Exception('Export type cannot be detected')

@@ -100,7 +100,7 @@ def parse_cli_args():
     return args
 
 
-def summarise_intake(source_data: list, output_handle: TextIO, weekly_summary: bool = False):
+def build_intake_summary(source_data: list, output_handle: TextIO, weekly_summary: bool = False):
     """
     Build a summary of intake from the exported data, and save to buffer
     Args:
@@ -209,7 +209,7 @@ def run_cli():
         output_handle = open(dest, 'w')
     else:
         output_handle = sys.stdout
-    summarise_intake(source_data, output_handle, weekly)
+    build_intake_summary(source_data, output_handle, weekly)
     if dest:
         output_handle.close()
 
