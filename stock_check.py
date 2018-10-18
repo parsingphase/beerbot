@@ -7,26 +7,33 @@ import json
 from typing import Optional
 from datetime import date
 from dateutil.relativedelta import relativedelta
+from typing import TextIO
 
 
 def file_contents(file_path: str) -> Optional[str]:
+    """
+    Load file contents into a string
+
+    Args:
+        file_path: Path of source file
+
+    Returns:
+        File contents as string
+    """
     with open(file_path, 'r') as f:
         contents = f.readlines()
     return ''.join(contents)
 
 
-def parse_cli_args():
-    parser = argparse.ArgumentParser(
-        description='Summarise expiry dates and types of beers on a list',
-        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--help]'
-    )
-    parser.add_argument('source', help='Path to source file (export.json)')
-    parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
-    args = parser.parse_args()
-    return args
+def build_dated_list_summary(source_data: list, output_handle: TextIO) -> None:
+    """
+    Convert the parsed JSON from a list feed into a CSV reporting stock levels and expiry
 
+    Args:
+        source_data: json data parsed into a list
+        output_handle: filehandle to write to
 
-def build_dated_list_summary(source_data, output_handle):
+    """
     source_data.sort(key=lambda b: b['best_by_date_iso'])
     thresholds = {
         'undated': {'description': 'Undated beers', 'ends': '0000-00-00'},
@@ -90,12 +97,31 @@ def build_dated_list_summary(source_data, output_handle):
     writer.writerow(['Styles'])
     for style_row in style_list:
         writer.writerow([style_row['style'], style_row['count']])
-    if dest:
-        output_handle.close()
+
+    output_handle.close()
+
+
+def parse_cli_args() -> argparse.Namespace:
+    """
+    Set up & parse CLI arguments
+
+    Returns:
+        Namespace of parsed args
+    """
+    parser = argparse.ArgumentParser(
+        description='Summarise expiry dates and types of beers on a list',
+        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--help]'
+    )
+    parser.add_argument('source', help='Path to source file (export.json)')
+    parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
+    args = parser.parse_args()
+    return args
 
 
 def run_cli():
-    global dest
+    """
+    Run as a cli script, according to arg setup
+    """
     args = parse_cli_args()
     source = args.source
     dest = args.output
