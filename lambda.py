@@ -3,7 +3,6 @@ import json
 import re
 import requests
 import stock_check
-import sys
 
 from botocore.exceptions import ClientError
 from email.parser import Parser as EmailParser
@@ -11,9 +10,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from io import StringIO
-from typing import TextIO
+from typing import Optional
 
 S3_BUCKET = 'org.phase.beerbot.mail.incoming'
+
+EXPORT_TYPE_LIST = 'list'
+EXPORT_TYPE_CHECKINS = 'checkins'
 
 
 def lambda_handler(event, context):
@@ -48,51 +50,81 @@ def lambda_handler(event, context):
 
             message_text = message_payload.get_payload(decode=True).decode('utf-8')
 
-            export_type_match = re.search('you requested an export of ([\w ]+) on Untappd', message_text)
+            export_type = detect_export_type(message_text)
+
             download_link_match = re.search('You can download your data export here: (https:\S+)', message_text)
 
-            export_type = export_type_match[1]  # 'a list' or 'your check-ins'
             download_link = download_link_match[1]
 
             r = requests.get(download_link)
             export_data = r.content.decode('utf-8')  # string
 
-            if export_type == 'a list':
+            if export_type == EXPORT_TYPE_LIST:
                 csv_buffer = StringIO()
                 stock_check.build_dated_list_summary(json.loads(export_data), csv_buffer)
-                send_email_response(reply_to, export_type, csv_buffer)
+                body = 'BeerBot found a list export in the email you sent and has used it to generate a stock list.'
+                send_email_response(reply_to, body, csv_buffer, 'beerbot-stocklist.csv')
 
             else:
                 raise Exception('Unfamiliar export type: "%s"' % export_type)
 
 
-def send_email_response(to: str, export_type: str, attachment: StringIO = None):
+def detect_export_type(message_text: str) -> Optional[str]:
+    """
+    Work out from message text what sort of import we've got
+    Args:
+        message_text:
+
+    Returns:
+        EXPORT_TYPE_*
+    """
+    export_match = re.search('you requested an export of ([\w ]+) on Untappd', message_text)
+    export_description = export_match[1]  # 'a list' or 'your check-ins'
+    if export_description == 'a list':
+        export_type = EXPORT_TYPE_LIST
+    elif export_description == 'your checkins':
+        export_type = EXPORT_TYPE_CHECKINS
+    else:
+        raise Exception('Export type cannot be detected')
+
+    return export_type
+
+
+def send_email_response(to: str, action_message: str, attachment: StringIO = None, filename: str = None):
     """
 
     Args:
         to: Recipient address
-        export_type: 'a list' or 'your check-ins'
+        action_message: Description of what's been processed
         attachment: String buffer containing generated CSV data
+        filename: optional download filename
 
     Returns:
 
     """
     client = boto3.client('ses')
-    sender = 'Phase.org Beer Bot <no-reply@beerbot.phase.org>'
-    body_text = 'We received a message containing ' + export_type
+    sender = 'BeerBot at Phase.org <no-reply@beerbot.phase.org>'
     title = 'Your Untappd submission to BeerBot'
 
-    print('Sending message for %s to %s' % (export_type, to))
+    print('Sending message to %s' % to)
 
     msg = MIMEMultipart()
     msg['Subject'] = title
     msg['From'] = sender
 
-    part = MIMEText(body_text)
+    body = action_message + ''' This file is attached below.
+
+BeerBot was created by @parsingphase (https://twitter.com/parsingphase, https://untappd.com/user/parsingphase)
+
+'''
+    part = MIMEText(body)
     msg.attach(part)
 
     part = MIMEApplication(attachment.getvalue(), 'csv')
-    part.add_header('Content-Disposition', 'attachment', filename='export.csv')
+    if filename is None:
+        filename = 'beerbot-export.csv'
+
+    part.add_header('Content-Disposition', 'attachment', filename=filename)
     msg.attach(part)
 
     try:
