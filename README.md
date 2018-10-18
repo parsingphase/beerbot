@@ -46,3 +46,7 @@ To run code, for example in a pipenv shell or a virtualenv:
     
     pipenv shell
     ./stockCheck.py data/input.json
+    
+### Package & update Lambda:
+
+    ./build.sh --upload
