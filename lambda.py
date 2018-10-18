@@ -132,7 +132,9 @@ def send_email_response(to: str, action_message: str, attachment: StringIO = Non
 
     body = action_message + '''
 
-BeerBot was created by @parsingphase (https://twitter.com/parsingphase, https://untappd.com/user/parsingphase)
+BeerBot was created by @parsingphase (https://untappd.com/user/parsingphase).
+
+Contribute to caffeinated coding at https://ko-fi.com/parsingphase
 
 '''
     part = MIMEText(body)
