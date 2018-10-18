@@ -65,7 +65,8 @@ def lambda_handler(event, context):
             elif export_type == EXPORT_TYPE_CHECKINS:
                 csv_buffer = StringIO()
                 imbibed.build_intake_summary(json.loads(export_data), csv_buffer, True)
-                body = 'BeerBot found a check-in export in the email you sent and created a weekly summary.'
+                body = 'BeerBot found a check-in export in the email you sent and created a weekly summary.\n\n'
+                body += 'Note on "estimated" field: * = Some measures guessed from serving. ** = some servings missing'
                 send_email_response(reply_to, body, csv_buffer, 'beerbot-weekly-summary.csv')
 
             else:
@@ -95,7 +96,7 @@ def detect_export_type(message_text: str) -> Optional[str]:
     Returns:
         EXPORT_TYPE_*
     """
-    export_match = re.search('you requested an export of ([\w ]+) on Untappd', message_text)
+    export_match = re.search('you requested an export of ([-\w ]+) on Untappd', message_text)
     export_description = export_match[1]  # 'a list' or 'your check-ins'
     if export_description == 'a list':
         export_type = EXPORT_TYPE_LIST
