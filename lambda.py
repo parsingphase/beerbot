@@ -59,13 +59,13 @@ def lambda_handler(event, context):
             if export_type == EXPORT_TYPE_LIST:
                 csv_buffer = StringIO()
                 stock_check.build_dated_list_summary(json.loads(export_data), csv_buffer)
-                body = 'BeerBot found a list export in the email you sent and has used it to generate a stock list.'
+                body = 'BeerBot found a list export in your email and generated a stock list, attached below.'
                 send_email_response(reply_to, body, csv_buffer, 'beerbot-stocklist.csv')
 
             elif export_type == EXPORT_TYPE_CHECKINS:
                 csv_buffer = StringIO()
                 imbibed.build_intake_summary(json.loads(export_data), csv_buffer, True)
-                body = 'BeerBot found a check-in export in the email you sent and created a weekly summary.\n\n'
+                body = 'BeerBot found a check-in export in your email and created a weekly summary, attached below.\n\n'
                 body += 'Note on "estimated" field: * = Some measures guessed from serving. ** = some servings missing'
                 send_email_response(reply_to, body, csv_buffer, 'beerbot-weekly-summary.csv')
 
@@ -130,7 +130,7 @@ def send_email_response(to: str, action_message: str, attachment: StringIO = Non
     msg['Subject'] = title
     msg['From'] = sender
 
-    body = action_message + ''' This file is attached below.
+    body = action_message + '''
 
 BeerBot was created by @parsingphase (https://twitter.com/parsingphase, https://untappd.com/user/parsingphase)
 
