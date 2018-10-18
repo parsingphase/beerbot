@@ -112,9 +112,17 @@ def plot_styles_pie(style_list: list, pie_file: str):
     for style_row in style_list:
         plot_keys.append(style_row['style'])
         plot_values.append(style_row['count'])
-    fig1, ax1 = plt.subplots()
-    ax1.pie(plot_values, labels=plot_keys)
+    fig1, ax1 = plt.subplots(figsize=(8, 6))
+    wedges, texts = ax1.pie(plot_values, startangle=180, counterclock=False)
     ax1.axis('equal')
+
+    ax1.legend(wedges, plot_keys,
+               title="Styles",
+               loc="center left",
+               bbox_to_anchor=(1, 0, 0.5, 1))
+
+    plt.subplots_adjust(left=0.02, bottom=0.1, right=0.6)
+
     plt.savefig(pie_file)
 
 
