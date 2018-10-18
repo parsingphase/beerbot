@@ -1,6 +1,6 @@
 import boto3
 import email
-import quopri
+import re
 
 S3_BUCKET = 'org.phase.beerbot.mail.incoming'
 
@@ -30,4 +30,19 @@ def lambda_handler(event, context):
             if not message_payload:
                 raise Exception('Cannot find message')
 
-            print(message_payload.get_payload(decode=True).decode('utf-8'))
+            message_text = message_payload.get_payload(decode=True).decode('utf-8')
+            print(message_text)
+
+            export_type_match = re.search('you requested an export of ([\w ]+) on Untappd', message_text)
+            download_link_match = re.search('You can download your data export here: (https:\S+)', message_text)
+
+            export_type = export_type_match[1]
+            download_link = download_link_match[1]
+
+
+'''
+> Recently, you requested an export of a list on Untappd. Good news - your export is ready!
+> Recently, you requested an export of your check-ins on Untappd. Good news - your export is ready!
+> 
+> You can download your data export here: https://untappd-user-exports.s3.amazonaws.com/123456/3cbe3f16f4cbaa962cf4f98a999f2030.json <https://untappd-user-exports.s3.amazonaws.com/3357624/3cbe3f16f4cbaa962cf4f98a999f2030.json>
+'''
