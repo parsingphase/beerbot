@@ -91,11 +91,16 @@ def measure_from_serving(serving: str) -> Optional[int]:
 def parse_cli_args():
     parser = argparse.ArgumentParser(
         description='Analyse consumption of alcoholic drinks from an Untappd JSON export file',
-        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--weekly] [--help]'
+        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--weekly|--daily|--styles] [--help]'
     )
     parser.add_argument('source', help='Path to source file (export.json)')
     parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
-    parser.add_argument('--weekly', help='Count by week rather than day', action='store_true')
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--daily', help='Summarise checkins by day', action='store_true')
+    group.add_argument('--weekly', help='Summarise checkins by week', action='store_true')
+    group.add_argument('--styles', help='Summarise styles of drinks checked in', action='store_true')
+
     args = parser.parse_args()
     return args
 
@@ -118,7 +123,8 @@ def analyze_checkins(
 
     """
     daily = {}
-    keys = ['drinks', 'average_score', 'beverage_ml', 'alcohol_ml', 'units', 'estimated',]
+    styles = {}
+    keys = ['drinks', 'average_score', 'beverage_ml', 'alcohol_ml', 'units', 'estimated', ]
     for checkin in source_data:
         # fields of interest: comment, created_at, beer_abv, serving_type
         abv = float(checkin['beer_abv'])
@@ -132,14 +138,14 @@ def analyze_checkins(
                 'alcohol_ml': 0,
                 'beverage_ml': 0,
                 'estimated': '',
-                'drinks_rated': 0,
-                'drinks_total_score': 0.0,
+                'rated': 0,
+                'total_score': 0.0,
             }
 
         daily[date_key]['drinks'] += 1
         if checkin['rating_score']:
-            daily[date_key]['drinks_rated'] += 1
-            daily[date_key]['drinks_total_score'] += float(checkin['rating_score'])
+            daily[date_key]['rated'] += 1
+            daily[date_key]['total_score'] += float(checkin['rating_score'])
 
         measure = measure_from_comment(checkin['comment'])
         if measure is None:
@@ -155,6 +161,17 @@ def analyze_checkins(
 
         else:
             daily[date_key]['estimated'] = '**'
+
+        # Gather styles if present
+        if checkin['beer_type']:
+            style = checkin['beer_type'].split(' -')[0].strip()
+            if style not in styles:
+                styles[style] = {'style': style, 'count': 0, 'rated': 0, 'total_score': 0}
+
+            styles[style]['count'] += 1
+            if checkin['rating_score']:
+                styles[style]['rated'] += 1
+                styles[style]['total_score'] += float(checkin['rating_score'])
 
     # Gather weeks
     weekly = {}
@@ -175,8 +192,8 @@ def analyze_checkins(
                 'alcohol_ml': 0,
                 'beverage_ml': 0,
                 'estimated': '',
-                'drinks_rated': 0,
-                'drinks_total_score': 0.0,
+                'rated': 0,
+                'total_score': 0.0,
             }
 
         for k in daily[date_key]:
@@ -187,6 +204,7 @@ def analyze_checkins(
             else:
                 weekly[week_key][k] += daily[date_key][k]
 
+    # Output Weeks
     if weekly_output:
         weekly_writer = csv.writer(weekly_output)
 
@@ -196,18 +214,19 @@ def analyze_checkins(
         for week_key in weekly:
             week_row = weekly[week_key]
             # Process average scores
-            week_row['average_score'] = round(week_row['drinks_total_score'] / week_row['drinks_rated'], 2) \
-                if week_row['drinks_rated'] else None
+            week_row['average_score'] = round(week_row['total_score'] / week_row['rated'], 2) \
+                if week_row['rated'] else None
 
             output_row = [week_key, week_row['commencing']]
             for k in keys:
                 cell_value = week_row[k]
-                if k not in ('estimated', 'average_score', 'drinks_total_score') and cell_value is not None:
+                if k not in ('estimated', 'average_score', 'total_score') and cell_value is not None:
                     cell_value = round(cell_value, 1)
                 output_row.append(cell_value)
 
             weekly_writer.writerow(output_row)
 
+    # Output Days
     if daily_output:
         daily_writer = csv.writer(daily_output)
         output_row = ['date'] + keys
@@ -216,34 +235,71 @@ def analyze_checkins(
         for date_key in daily:
             day_row = daily[date_key]
             # Process average scores
-            day_row['average_score'] = round(day_row['drinks_total_score'] / day_row['drinks_rated'], 2) \
-                if day_row['drinks_rated'] else None
+            day_row['average_score'] = round(day_row['total_score'] / day_row['rated'], 2) \
+                if day_row['rated'] else None
 
             output_row = [date_key]
             for k in keys:
                 cell_value = day_row[k]
-                if k not in ('estimated', 'average_score', 'drinks_total_score') and cell_value is not None:
+                if k not in ('estimated', 'average_score', 'total_score') and cell_value is not None:
                     cell_value = round(cell_value, 1)
                 output_row.append(cell_value)
 
             daily_writer.writerow(output_row)
+
+    # Summarise styles
+    if styles_output:
+        style_list = []
+        style_totals = {'count': 0, 'rated': 0, 'total_score': 0}
+        for style in styles:
+            style_summary = styles[style]
+            style_summary['average_score'] = round(style_summary['total_score'] / style_summary['rated'], 2) \
+                if style_summary['rated'] else None
+            style_list.append(style_summary)
+
+            style_totals['total_score'] += style_summary['total_score']
+            style_totals['rated'] += style_summary['rated']
+            style_totals['count'] += style_summary['count']
+
+        style_list.sort(key=lambda b: (0 - b['count'], b['style']))
+
+        styles_writer = csv.writer(styles_output)
+        style_keys = ['style', 'count', 'rated', 'average_score']
+        styles_writer.writerow(style_keys)
+        for style in style_list:
+            output_row = []
+            for k in style_keys:
+                output_row.append(style[k])
+            styles_writer.writerow(output_row)
+
+        styles_writer.writerow([])
+        styles_writer.writerow(
+            ['Total',
+             style_totals['count'],
+             style_totals['rated'],
+             round(style_totals['total_score'] / style_totals['rated'], 2) if style_totals['rated'] else None
+             ]
+        )
 
 
 def run_cli():
     args = parse_cli_args()
     source = args.source
     dest = args.output
-    weekly = args.weekly
     source_data = json.loads(file_contents(source))
     if dest:
         output_handle = open(dest, 'w')
     else:
         output_handle = sys.stdout
 
-    if weekly:
+    if args.weekly:
         analyze_checkins(source_data, weekly_output=output_handle)
-    else:
+    elif args.daily:
         analyze_checkins(source_data, daily_output=output_handle)
+    elif args.styles:
+        analyze_checkins(source_data, styles_output=output_handle)
+    else:
+        raise Exception('No report requested')
 
     if dest:
         output_handle.close()
