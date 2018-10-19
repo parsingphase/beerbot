@@ -35,16 +35,14 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
         styles_output: buffer to write styles summary to
     """
     source_data.sort(key=lambda b: b['best_by_date_iso'])
-    thresholds = {
-        'undated': {'description': 'Undated beers', 'ends': '0000-00-00'},
-        'now': {'description': 'Expired beers', 'ends': date.today().strftime('%Y-%m-%d')},
-        'month': {'description': 'Within one month',
-                  'ends': (date.today() + relativedelta(months=+1)).strftime('%Y-%m-%d')},
-        'two': {'description': 'Within two months',
-                'ends': (date.today() + relativedelta(months=+2)).strftime('%Y-%m-%d')},
-        'future': {'description': 'More than two months away'}
-    }
-    slices = {'undated': [], 'now': [], 'month': [], 'two': [], 'future': []}
+    thresholds = [
+        {'description': 'Undated beers', 'ends': '0000-00-00'},
+        {'description': 'Expired beers', 'ends': date.today().strftime('%Y-%m-%d')},
+        {'description': 'Within one month', 'ends': (date.today() + relativedelta(months=+1)).strftime('%Y-%m-%d')},
+        {'description': 'Within two months', 'ends': (date.today() + relativedelta(months=+2)).strftime('%Y-%m-%d')},
+        {'description': 'More than two months away'}
+    ]
+    slices = [[] for _ in range(len(thresholds))]
     styles = {}
     for item in source_data:
         style = item['beer_type'].split(' -')[0].strip()
@@ -53,16 +51,15 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
         styles[style] += int(item['quantity'])
 
         due = item['best_by_date_iso']
-        if due <= thresholds['undated']['ends']:
-            slices['undated'].append(item)
-        elif due < thresholds['now']['ends']:
-            slices['now'].append(item)
-        elif due < thresholds['month']['ends']:
-            slices['month'].append(item)
-        elif due < thresholds['two']['ends']:
-            slices['two'].append(item)
-        else:
-            slices['future'].append(item)
+
+        for idx, threshold in enumerate(thresholds):
+            if 'ends' in threshold and due <= threshold['ends']:
+                slices[idx].append(item)
+                break
+
+            if 'ends' not in threshold:
+                slices[idx].append(item)
+
     style_list = []
     for style in styles:
         style_list.append({'style': style, 'count': styles[style]})
@@ -70,11 +67,11 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
 
     if stocklist_output:
         writer = csv.writer(stocklist_output)
-        for k in slices:
+        for k, drinks in enumerate(slices):
             writer.writerow(
                 [
                     '%s: %d item(s) of %d beer(s)' % (
-                        thresholds[k]['description'], sum([int(s['quantity']) for s in slices[k]]), len(slices[k]),
+                        thresholds[k]['description'], sum([int(drink['quantity']) for drink in drinks]), len(drinks),
                     )
                 ]
             )
