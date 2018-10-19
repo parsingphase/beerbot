@@ -54,23 +54,27 @@ def lambda_handler(event, context):
             export_type = detect_export_type(message_text)
             download_link = detect_download_link(message_text)
 
-            r = requests.get(download_link)
-            export_data = r.content.decode('utf-8')  # string
+            if export_type:
+                r = requests.get(download_link)
+                export_data = r.content.decode('utf-8')  # string
+                loaded_data = json.loads(export_data)
 
-            if export_type == EXPORT_TYPE_LIST:
-                csv_buffer = StringIO()
-                stock_check.build_dated_list_summary(json.loads(export_data), csv_buffer)
-                body = 'BeerBot found a list export in your email and generated a stock list, attached below.'
-                stock_list = make_attachment(csv_buffer, 'beerbot-stocklist.csv', 'text/csv')
-                send_email_response(reply_to, body, [stock_list])
+                if export_type == EXPORT_TYPE_LIST:
+                    weekly_buffer = StringIO()
+                    stock_check.build_dated_list_summary(loaded_data, weekly_buffer)
+                    body = 'BeerBot found a list export in your email and generated a stock list, attached below.'
+                    stock_list = make_attachment(weekly_buffer, 'beerbot-stocklist.csv', 'text/csv')
+                    send_email_response(reply_to, body, [stock_list])
 
-            elif export_type == EXPORT_TYPE_CHECKINS:
-                csv_buffer = StringIO()
-                imbibed.analyze_checkins(json.loads(export_data), weekly_output=csv_buffer)
-                body = 'BeerBot found a check-in export in your email and created a weekly summary, attached below.\n\n'
-                body += 'Note on "estimated" field: * = Some measures guessed from serving. ** = some servings missing'
-                summary = make_attachment(csv_buffer, 'beerbot-weekly-summary.csv', 'text/csv')
-                send_email_response(reply_to, body, [summary])
+                elif export_type == EXPORT_TYPE_CHECKINS:
+                    weekly_buffer = StringIO()
+                    styles_buffer = StringIO()
+                    imbibed.analyze_checkins(loaded_data, weekly_output=weekly_buffer, styles_output=styles_buffer)
+                    body = 'BeerBot found a check-in export in your email and created summaries by week & style, attached below.\n\n'
+                    body += 'Note on "estimated" field: * = Some measures guessed from serving. ** = some servings missing'
+                    weekly = make_attachment(weekly_buffer, 'beerbot-weekly-summary.csv', 'text/csv')
+                    styles = make_attachment(styles_buffer, 'beerbot-checkin-styles.csv', 'text/csv')
+                    send_email_response(reply_to, body, [weekly, styles])
 
             else:
                 raise Exception('Unfamiliar export type: "%s"' % export_type)
