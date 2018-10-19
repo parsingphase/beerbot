@@ -11,7 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from io import StringIO
-from typing import Optional
+from typing import Optional, List
 
 S3_BUCKET = 'org.phase.beerbot.mail.incoming'
 
@@ -19,6 +19,7 @@ EXPORT_TYPE_LIST = 'list'
 EXPORT_TYPE_CHECKINS = 'checkins'
 
 
+# noinspection PyUnusedLocal
 def lambda_handler(event, context):
     client = boto3.client("s3")
 
@@ -60,14 +61,16 @@ def lambda_handler(event, context):
                 csv_buffer = StringIO()
                 stock_check.build_dated_list_summary(json.loads(export_data), csv_buffer)
                 body = 'BeerBot found a list export in your email and generated a stock list, attached below.'
-                send_email_response(reply_to, body, csv_buffer, 'beerbot-stocklist.csv')
+                stock_list = make_attachment(csv_buffer, 'beerbot-stocklist.csv', 'text/csv')
+                send_email_response(reply_to, body, [stock_list])
 
             elif export_type == EXPORT_TYPE_CHECKINS:
                 csv_buffer = StringIO()
                 imbibed.build_intake_summary(json.loads(export_data), csv_buffer, True)
                 body = 'BeerBot found a check-in export in your email and created a weekly summary, attached below.\n\n'
                 body += 'Note on "estimated" field: * = Some measures guessed from serving. ** = some servings missing'
-                send_email_response(reply_to, body, csv_buffer, 'beerbot-weekly-summary.csv')
+                summary = make_attachment(csv_buffer, 'beerbot-weekly-summary.csv', 'text/csv')
+                send_email_response(reply_to, body, [summary])
 
             else:
                 raise Exception('Unfamiliar export type: "%s"' % export_type)
@@ -108,14 +111,13 @@ def detect_export_type(message_text: str) -> Optional[str]:
     return export_type
 
 
-def send_email_response(to: str, action_message: str, attachment: StringIO = None, filename: str = None):
+def send_email_response(to: str, action_message: str, files: List[MIMEApplication]):
     """
 
     Args:
         to: Recipient address
         action_message: Description of what's been processed
-        attachment: String buffer containing generated CSV data
-        filename: optional download filename
+        files: List of mime attachments
 
     Returns:
 
@@ -140,12 +142,8 @@ Contribute to caffeinated coding at https://ko-fi.com/parsingphase
     part = MIMEText(body)
     msg.attach(part)
 
-    part = MIMEApplication(attachment.getvalue(), 'csv')
-    if filename is None:
-        filename = 'beerbot-export.csv'
-
-    part.add_header('Content-Disposition', 'attachment', filename=filename)
-    msg.attach(part)
+    for part in files:
+        msg.attach(part)
 
     try:
         # Provide the contents of the email.
@@ -162,3 +160,11 @@ Contribute to caffeinated coding at https://ko-fi.com/parsingphase
     else:
         print("Email sent! Message ID:"),
         print(response['MessageId'])
+
+
+def make_attachment(file_data: StringIO, filename: str = None, mime_type: str = 'application/csv') -> MIMEApplication:
+    part = MIMEApplication(file_data.getvalue(), mime_type.split('/')[1])
+    if filename is None:
+        filename = 'beerbot-export.csv'
+    part.add_header('Content-Disposition', 'attachment', filename=filename)
+    return part
