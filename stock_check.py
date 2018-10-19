@@ -42,7 +42,7 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
         {'description': 'Within two months', 'ends': (date.today() + relativedelta(months=+2)).strftime('%Y-%m-%d')},
         {'description': 'More than two months away'}
     ]
-    slices = [[] for _ in range(len(thresholds))]
+    expiry_sets = [{} for _ in range(len(thresholds))]
     styles = {}
     for item in source_data:
         style = item['beer_type'].split(' -')[0].strip()
@@ -50,48 +50,65 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
             styles[style] = 0
         styles[style] += int(item['quantity'])
 
+        # Strictly only needed for full stocklist
         due = item['best_by_date_iso']
-
         for idx, threshold in enumerate(thresholds):
             if 'ends' in threshold and due <= threshold['ends']:
-                slices[idx].append(item)
+                if style not in expiry_sets[idx]:
+                    expiry_sets[idx][style] = []
+                expiry_sets[idx][style].append(item)
                 break
 
             if 'ends' not in threshold:
-                slices[idx].append(item)
-
-    style_list = []
-    for style in styles:
-        style_list.append({'style': style, 'count': styles[style]})
-    style_list.sort(key=lambda b: (0 - b['count'], b['style']))
+                if style not in expiry_sets[idx]:
+                    expiry_sets[idx][style] = []
+                expiry_sets[idx][style].append(item)
 
     if stocklist_output:
         writer = csv.writer(stocklist_output)
-        for k, drinks in enumerate(slices):
+        writer.writerow(['Expiry', 'Type', '#', 'Brewery', 'Beverage', 'Subtype', 'ABV', 'Serving', 'BBE'])
+        for k, expiry_set in enumerate(expiry_sets):
             writer.writerow(
                 [
                     '%s: %d item(s) of %d beer(s)' % (
-                        thresholds[k]['description'], sum([int(drink['quantity']) for drink in drinks]), len(drinks),
+                        thresholds[k]['description'],
+                        sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set]),
+                        len(expiry_set),
                     )
                 ]
             )
-            if len(slices[k]) == 0:
+            if len(expiry_sets[k]) == 0:
                 writer.writerow(['(NONE)'])
             else:
-                for item in slices[k]:
-                    writer.writerow(
-                        [
-                            item['best_by_date_iso'],
-                            item['quantity'],
-                            item['brewery_name'],
-                            item['beer_name'],
-                            item['beer_type'],
-                            '%.1f%%' % float(item['beer_abv']),
-                            item['container'],
-                        ]
-                    )
+                # Sort styles by name
+                for style in sorted(expiry_sets[k]):
+                    first = True
+                    drinks = expiry_sets[k][style]
+                    drinks.sort(key=lambda d: (d['brewery_name'], d['beer_name']))
+                    for item in drinks:
+                        writer.writerow(
+                            [
+                                '',
+                                style if first else '',
+                                item['quantity'],
+                                item['brewery_name'],
+                                item['beer_name'],
+                                item['beer_type'],
+                                '%.1f%%' % float(item['beer_abv']),
+                                item['container'],
+                                item['best_by_date_iso'],
+                            ]
+                        )
+                        first = False
+
+            if len(expiry_sets) > k+1:
+                writer.writerow([''])  # space before next
 
     if styles_output:
+        style_list = []
+        for style in styles:
+            style_list.append({'style': style, 'count': styles[style]})
+        style_list.sort(key=lambda b: (0 - b['count'], b['style']))
         styles_writer = csv.writer(styles_output)
         styles_writer.writerow(['Styles'])
         for style_row in style_list:
