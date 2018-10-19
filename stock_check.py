@@ -25,14 +25,14 @@ def file_contents(file_path: str) -> Optional[str]:
     return ''.join(contents)
 
 
-def build_dated_list_summary(source_data: list, output_handle: TextIO) -> None:
+def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, styles_output: TextIO = None) -> None:
     """
     Convert the parsed JSON from a list feed into a CSV reporting stock levels and expiry
 
     Args:
         source_data: json data parsed into a list
-        output_handle: filehandle to write to
-
+        stocklist_output: buffer to write stock list to
+        styles_output: buffer to write styles summary to
     """
     source_data.sort(key=lambda b: b['best_by_date_iso'])
     thresholds = {
@@ -48,7 +48,7 @@ def build_dated_list_summary(source_data: list, output_handle: TextIO) -> None:
     styles = {}
     for item in source_data:
         style = item['beer_type'].split(' -')[0].strip()
-        if not style in styles:
+        if style not in styles:
             styles[style] = 0
         styles[style] += int(item['quantity'])
 
@@ -68,35 +68,37 @@ def build_dated_list_summary(source_data: list, output_handle: TextIO) -> None:
         style_list.append({'style': style, 'count': styles[style]})
     style_list.sort(key=lambda b: (0 - b['count'], b['style']))
 
-    writer = csv.writer(output_handle)
-    for k in slices:
-        writer.writerow(
-            [
-                '%s: %d item(s) of %d beer(s)' % (
-                    thresholds[k]['description'], sum([int(s['quantity']) for s in slices[k]]), len(slices[k]),
-                )
-            ]
-        )
-        if len(slices[k]) == 0:
-            writer.writerow(['(NONE)'])
-        else:
-            for item in slices[k]:
-                writer.writerow(
-                    [
-                        item['best_by_date_iso'],
-                        item['quantity'],
-                        item['brewery_name'],
-                        item['beer_name'],
-                        item['beer_type'],
-                        '%.1f%%' % float(item['beer_abv']),
-                        item['container'],
-                    ]
-                )
-    for i in range(5):
-        writer.writerow([''])
-    writer.writerow(['Styles'])
-    for style_row in style_list:
-        writer.writerow([style_row['style'], style_row['count']])
+    if stocklist_output:
+        writer = csv.writer(stocklist_output)
+        for k in slices:
+            writer.writerow(
+                [
+                    '%s: %d item(s) of %d beer(s)' % (
+                        thresholds[k]['description'], sum([int(s['quantity']) for s in slices[k]]), len(slices[k]),
+                    )
+                ]
+            )
+            if len(slices[k]) == 0:
+                writer.writerow(['(NONE)'])
+            else:
+                for item in slices[k]:
+                    writer.writerow(
+                        [
+                            item['best_by_date_iso'],
+                            item['quantity'],
+                            item['brewery_name'],
+                            item['beer_name'],
+                            item['beer_type'],
+                            '%.1f%%' % float(item['beer_abv']),
+                            item['container'],
+                        ]
+                    )
+
+    if styles_output:
+        styles_writer = csv.writer(styles_output)
+        styles_writer.writerow(['Styles'])
+        for style_row in style_list:
+            styles_writer.writerow([style_row['style'], style_row['count']])
 
 
 def parse_cli_args() -> argparse.Namespace:
@@ -108,9 +110,10 @@ def parse_cli_args() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(
         description='Summarise expiry dates and types of beers on a list',
-        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--help]'
+        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--summary] [--help]'
     )
     parser.add_argument('source', help='Path to source file (export.json)')
+    parser.add_argument('--summary', help='Generate a summary of styles rather than a full list', action='store_true')
     parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
     args = parser.parse_args()
     return args
@@ -128,7 +131,11 @@ def run_cli():
     else:
         output_handle = sys.stdout
     source_data = json.loads(file_contents(source))
-    build_dated_list_summary(source_data, output_handle)
+
+    if args.summary:
+        build_dated_stocklist(source_data, styles_output=output_handle)
+    else:
+        build_dated_stocklist(source_data, stocklist_output=output_handle)
 
     if dest:
         output_handle.close()

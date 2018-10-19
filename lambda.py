@@ -60,18 +60,25 @@ def lambda_handler(event, context):
                 loaded_data = json.loads(export_data)
 
                 if export_type == EXPORT_TYPE_LIST:
-                    weekly_buffer = StringIO()
-                    stock_check.build_dated_list_summary(loaded_data, weekly_buffer)
+                    stocklist_buffer = StringIO()
+                    styles_buffer = StringIO()
+                    stock_check.build_dated_stocklist(
+                        loaded_data,
+                        stocklist_output=stocklist_buffer,
+                        styles_output=styles_buffer)
                     body = 'BeerBot found a list export in your email and generated a stock list, attached below.'
-                    stock_list = make_attachment(weekly_buffer, 'beerbot-stocklist.csv', 'text/csv')
-                    send_email_response(reply_to, body, [stock_list])
+                    stock_list = make_attachment(stocklist_buffer, 'beerbot-stocklist.csv', 'text/csv')
+                    style_summary = make_attachment(styles_buffer, 'beerbot-list-summary.csv', 'text/csv')
+                    send_email_response(reply_to, body, [stock_list, style_summary])
 
                 elif export_type == EXPORT_TYPE_CHECKINS:
                     weekly_buffer = StringIO()
                     styles_buffer = StringIO()
                     imbibed.analyze_checkins(loaded_data, weekly_output=weekly_buffer, styles_output=styles_buffer)
-                    body = 'BeerBot found a check-in export in your email and created summaries by week & style, attached below.\n\n'
-                    body += 'Note on "estimated" field: * = Some measures guessed from serving. ** = some servings missing'
+                    body = 'BeerBot found a check-in export in your email and created summaries by week & style,' \
+                           ' attached below.\n\n'
+                    body += 'Note on "estimated" field: ' \
+                            '* = Some measures guessed from serving. ** = some servings missing'
                     weekly = make_attachment(weekly_buffer, 'beerbot-weekly-summary.csv', 'text/csv')
                     styles = make_attachment(styles_buffer, 'beerbot-checkin-styles.csv', 'text/csv')
                     send_email_response(reply_to, body, [weekly, styles])
