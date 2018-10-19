@@ -66,7 +66,7 @@ def lambda_handler(event, context):
 
             elif export_type == EXPORT_TYPE_CHECKINS:
                 csv_buffer = StringIO()
-                imbibed.build_intake_summary(json.loads(export_data), csv_buffer, True)
+                imbibed.analyze_checkins(json.loads(export_data), weekly_output=csv_buffer)
                 body = 'BeerBot found a check-in export in your email and created a weekly summary, attached below.\n\n'
                 body += 'Note on "estimated" field: * = Some measures guessed from serving. ** = some servings missing'
                 summary = make_attachment(csv_buffer, 'beerbot-weekly-summary.csv', 'text/csv')

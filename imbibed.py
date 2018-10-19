@@ -100,20 +100,25 @@ def parse_cli_args():
     return args
 
 
-def build_intake_summary(source_data: list, output_handle: TextIO, weekly_summary: bool = False):
+def analyze_checkins(
+        source_data: list,
+        daily_output: TextIO = None,
+        weekly_output: TextIO = None,
+        styles_output: TextIO = None
+):
     """
     Build a summary of intake from the exported data, and save to buffer
     Args:
         source_data:
-        output_handle:
-        weekly_summary:
+        daily_output:
+        weekly_output:
+        styles_output:
 
     Returns:
 
     """
-    writer = csv.writer(output_handle)
     daily = {}
-    keys = ['drinks', 'beverage_ml', 'alcohol_ml', 'units', 'estimated']
+    keys = ['drinks', 'average_score', 'beverage_ml', 'alcohol_ml', 'units', 'estimated',]
     for checkin in source_data:
         # fields of interest: comment, created_at, beer_abv, serving_type
         abv = float(checkin['beer_abv'])
@@ -126,10 +131,15 @@ def build_intake_summary(source_data: list, output_handle: TextIO, weekly_summar
                 'units': 0,
                 'alcohol_ml': 0,
                 'beverage_ml': 0,
-                'estimated': ''
+                'estimated': '',
+                'drinks_rated': 0,
+                'drinks_total_score': 0.0,
             }
 
         daily[date_key]['drinks'] += 1
+        if checkin['rating_score']:
+            daily[date_key]['drinks_rated'] += 1
+            daily[date_key]['drinks_total_score'] += float(checkin['rating_score'])
 
         measure = measure_from_comment(checkin['comment'])
         if measure is None:
@@ -145,7 +155,8 @@ def build_intake_summary(source_data: list, output_handle: TextIO, weekly_summar
 
         else:
             daily[date_key]['estimated'] = '**'
-    # round numerics to 1dp, gather weeks
+
+    # Gather weeks
     weekly = {}
     for date_key in daily:
 
@@ -163,7 +174,9 @@ def build_intake_summary(source_data: list, output_handle: TextIO, weekly_summar
                 'units': 0,
                 'alcohol_ml': 0,
                 'beverage_ml': 0,
-                'estimated': ''
+                'estimated': '',
+                'drinks_rated': 0,
+                'drinks_total_score': 0.0,
             }
 
         for k in daily[date_key]:
@@ -173,30 +186,47 @@ def build_intake_summary(source_data: list, output_handle: TextIO, weekly_summar
 
             else:
                 weekly[week_key][k] += daily[date_key][k]
-                daily[date_key][k] = round(daily[date_key][k], 1)
-    if weekly_summary:
-        row = ['week', 'commencing'] + keys
-        writer.writerow(row)
+
+    if weekly_output:
+        weekly_writer = csv.writer(weekly_output)
+
+        output_row = ['week', 'commencing'] + keys
+        weekly_writer.writerow(output_row)
 
         for week_key in weekly:
-            row = [week_key, weekly[week_key]['commencing']]
-            for k in keys:
-                cell_value = weekly[week_key][k]
-                if k != 'estimated':
-                    cell_value = round(cell_value, 1)
-                row.append(cell_value)
+            week_row = weekly[week_key]
+            # Process average scores
+            week_row['average_score'] = round(week_row['drinks_total_score'] / week_row['drinks_rated'], 2) \
+                if week_row['drinks_rated'] else None
 
-            writer.writerow(row)
-    else:
-        row = ['date'] + keys
-        writer.writerow(row)
+            output_row = [week_key, week_row['commencing']]
+            for k in keys:
+                cell_value = week_row[k]
+                if k not in ('estimated', 'average_score', 'drinks_total_score') and cell_value is not None:
+                    cell_value = round(cell_value, 1)
+                output_row.append(cell_value)
+
+            weekly_writer.writerow(output_row)
+
+    if daily_output:
+        daily_writer = csv.writer(daily_output)
+        output_row = ['date'] + keys
+        daily_writer.writerow(output_row)
 
         for date_key in daily:
-            row = [date_key]
-            for k in keys:
-                row.append(daily[date_key][k])
+            day_row = daily[date_key]
+            # Process average scores
+            day_row['average_score'] = round(day_row['drinks_total_score'] / day_row['drinks_rated'], 2) \
+                if day_row['drinks_rated'] else None
 
-            writer.writerow(row)
+            output_row = [date_key]
+            for k in keys:
+                cell_value = day_row[k]
+                if k not in ('estimated', 'average_score', 'drinks_total_score') and cell_value is not None:
+                    cell_value = round(cell_value, 1)
+                output_row.append(cell_value)
+
+            daily_writer.writerow(output_row)
 
 
 def run_cli():
@@ -209,7 +239,12 @@ def run_cli():
         output_handle = open(dest, 'w')
     else:
         output_handle = sys.stdout
-    build_intake_summary(source_data, output_handle, weekly)
+
+    if weekly:
+        analyze_checkins(source_data, weekly_output=output_handle)
+    else:
+        analyze_checkins(source_data, daily_output=output_handle)
+
     if dest:
         output_handle.close()
 
