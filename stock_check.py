@@ -75,29 +75,27 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
         writer = csv.writer(stocklist_output)
         writer.writerow(['Expiry', 'Type', '#', 'Brewery', 'Beverage', 'Subtype', 'ABV', 'Serving', 'BBE'])
         for k, expiry_set in enumerate(expiry_sets):
-            if list_has_quantities:
-                writer.writerow(
-                    [
-                        '%s: %d item(s) of %d beer(s)' % (
-                            thresholds[k]['description'],
-                            sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set]),
-                            len(expiry_set),
-                        )
-                    ]
-                )
-            else:
-                writer.writerow(
-                    [
-                        '%s: %d beer(s)' % (
-                            thresholds[k]['description'],
-                            len(expiry_set),
-                        )
-                    ]
-                )
+            if len(expiry_sets[k]):
+                if list_has_quantities:
+                    writer.writerow(
+                        [
+                            '%s: %d item(s) of %d beer(s)' % (
+                                thresholds[k]['description'],
+                                sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set]),
+                                len(expiry_set),
+                            )
+                        ]
+                    )
+                else:
+                    writer.writerow(
+                        [
+                            '%s: %d beer(s)' % (
+                                thresholds[k]['description'],
+                                len(expiry_set),
+                            )
+                        ]
+                    )
 
-            if len(expiry_sets[k]) == 0:
-                writer.writerow(['(NONE)'])
-            else:
                 # Sort styles by name
                 for style in sorted(expiry_sets[k]):
                     first = True
@@ -119,8 +117,8 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
                         )
                         first = False
 
-            if len(expiry_sets) > k + 1:
-                writer.writerow([''])  # space before next
+                if len(expiry_sets) > k + 1:
+                    writer.writerow([''])  # space before next
 
     if styles_output:
         style_list = []
