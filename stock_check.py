@@ -34,7 +34,6 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
         stocklist_output: buffer to write stock list to
         styles_output: buffer to write styles summary to
     """
-    source_data.sort(key=lambda b: b['best_by_date_iso'])
     thresholds = [
         {'description': 'Undated beers', 'ends': '0000-00-00'},
         {'description': 'Expired beers', 'ends': date.today().strftime('%Y-%m-%d')},
@@ -44,14 +43,22 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
     ]
     expiry_sets = [{} for _ in range(len(thresholds))]
     styles = {}
+    list_has_quantities = False
+
     for item in source_data:
         style = item['beer_type'].split(' -')[0].strip()
-        if style not in styles:
-            styles[style] = 0
-        styles[style] += int(item['quantity'])
+
+        if 'quantity' in item:
+            if style not in styles:
+                styles[style] = 0
+            styles[style] += int(item['quantity'])
+            list_has_quantities = True
+        else:
+            if style not in styles:
+                styles[style] = None
 
         # Strictly only needed for full stocklist
-        due = item['best_by_date_iso']
+        due = item.get('best_by_date_iso', '0000-00-00')
         for idx, threshold in enumerate(thresholds):
             if 'ends' in threshold and due <= threshold['ends']:
                 if style not in expiry_sets[idx]:
@@ -68,18 +75,27 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
         writer = csv.writer(stocklist_output)
         writer.writerow(['Expiry', 'Type', '#', 'Brewery', 'Beverage', 'Subtype', 'ABV', 'Serving', 'BBE'])
         for k, expiry_set in enumerate(expiry_sets):
-            writer.writerow(
-                [
-                    '%s: %d item(s) of %d beer(s)' % (
-                        thresholds[k]['description'],
-                        sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set]),
-                        len(expiry_set),
+            if len(expiry_sets[k]):
+                if list_has_quantities:
+                    writer.writerow(
+                        [
+                            '%s: %d item(s) of %d beer(s)' % (
+                                thresholds[k]['description'],
+                                sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set]),
+                                len(expiry_set),
+                            )
+                        ]
                     )
-                ]
-            )
-            if len(expiry_sets[k]) == 0:
-                writer.writerow(['(NONE)'])
-            else:
+                else:
+                    writer.writerow(
+                        [
+                            '%s: %d beer(s)' % (
+                                thresholds[k]['description'],
+                                len(expiry_set),
+                            )
+                        ]
+                    )
+
                 # Sort styles by name
                 for style in sorted(expiry_sets[k]):
                     first = True
@@ -90,29 +106,31 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
                             [
                                 '',
                                 style if first else '',
-                                item['quantity'],
+                                item.get('quantity', ''),
                                 item['brewery_name'],
                                 item['beer_name'],
                                 item['beer_type'],
                                 '%.1f%%' % float(item['beer_abv']),
-                                item['container'],
-                                item['best_by_date_iso'],
+                                item.get('container', ''),
+                                item.get('best_by_date_iso', ''),
                             ]
                         )
                         first = False
 
-            if len(expiry_sets) > k+1:
-                writer.writerow([''])  # space before next
+                if len(expiry_sets) > k + 1:
+                    writer.writerow([''])  # space before next
 
     if styles_output:
         style_list = []
         for style in styles:
             style_list.append({'style': style, 'count': styles[style]})
-        style_list.sort(key=lambda b: (0 - b['count'], b['style']))
+        style_list.sort(key=lambda b: (0 if b['count'] is None else (0 - b['count']), b['style']))
         styles_writer = csv.writer(styles_output)
         styles_writer.writerow(['Styles'])
         for style_row in style_list:
-            styles_writer.writerow([style_row['style'], style_row['count']])
+            styles_writer.writerow(
+                [style_row['style']] if style_row['count'] is None else [style_row['style'], style_row['count']]
+            )
 
 
 def parse_cli_args() -> argparse.Namespace:

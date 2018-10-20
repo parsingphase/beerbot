@@ -1,12 +1,14 @@
 import boto3
+import imbibed
 import json
+import logging
 import re
 import requests
 import stock_check
-import imbibed
 
 from botocore.exceptions import ClientError
 from email.parser import Parser as EmailParser
+from email.message import Message
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -21,7 +23,8 @@ EXPORT_TYPE_CHECKINS = 'checkins'
 
 # noinspection PyUnusedLocal
 def lambda_handler(event, context):
-    client = boto3.client("s3")
+    logger = logging.getLogger()
+    logger.setLevel(logging.WARN)
 
     for record in event['Records']:
         if 'ses' in record:
@@ -31,60 +34,82 @@ def lambda_handler(event, context):
             reply_to = headers['returnPath'] if 'returnPath' in headers else mail_data['source']
             message_id = mail_data['messageId']
 
-            result = client.get_object(Bucket=S3_BUCKET, Key=message_id)
-            # Read the object (not compressed):
-            text = result["Body"].read().decode()
-            parser = EmailParser()
-            message = parser.parsestr(text)
-            message_payload = None
-            # AWS returns old Message format: https://docs.python.org/3.6/library/email.compat32-message.html
-            if message.is_multipart():
-                payloads = message.get_payload()
-                for payload in payloads:
-                    if payload.get_content_type() == 'text/plain':
-                        message_payload = payload
-                        break
-            else:
-                message_payload = message
+            try:
+                message_payload = fetch_message_from_bucket(message_id)
 
-            if not message_payload:
-                raise Exception('Cannot find message')
+                if not message_payload:
+                    raise Exception('Incoming message could not be loaded')
 
-            message_text = message_payload.get_payload(decode=True).decode('utf-8')
-            export_type = detect_export_type(message_text)
-            download_link = detect_download_link(message_text)
+                message_text = message_payload.get_payload(decode=True).decode('utf-8')
+                export_type = detect_export_type(message_text)
+                download_link = detect_download_link(message_text)
 
-            if export_type:
-                r = requests.get(download_link)
-                export_data = r.content.decode('utf-8')  # string
-                loaded_data = json.loads(export_data)
+                if export_type:
+                    r = requests.get(download_link)
+                    export_data = r.content.decode('utf-8')  # string
+                    loaded_data = json.loads(export_data)
 
-                if export_type == EXPORT_TYPE_LIST:
-                    stocklist_buffer = StringIO()
-                    styles_buffer = StringIO()
-                    stock_check.build_dated_stocklist(
-                        loaded_data,
-                        stocklist_output=stocklist_buffer,
-                        styles_output=styles_buffer)
-                    body = 'BeerBot found a list export in your email and generated a stock list, attached below.'
-                    stock_list = make_attachment(stocklist_buffer, 'beerbot-stocklist.csv', 'text/csv')
-                    style_summary = make_attachment(styles_buffer, 'beerbot-list-summary.csv', 'text/csv')
-                    send_email_response(reply_to, body, [stock_list, style_summary])
+                    if export_type == EXPORT_TYPE_LIST:
+                        stocklist_buffer = StringIO()
+                        styles_buffer = StringIO()
+                        stock_check.build_dated_stocklist(
+                            loaded_data,
+                            stocklist_output=stocklist_buffer,
+                            styles_output=styles_buffer)
+                        body = 'BeerBot found a list export in your email and generated a stock list, attached below.'
+                        stock_list = make_attachment(stocklist_buffer, 'beerbot-stocklist.csv', 'text/csv')
+                        style_summary = make_attachment(styles_buffer, 'beerbot-list-summary.csv', 'text/csv')
+                        send_email_response(reply_to, body, [stock_list, style_summary])
 
-                elif export_type == EXPORT_TYPE_CHECKINS:
-                    weekly_buffer = StringIO()
-                    styles_buffer = StringIO()
-                    imbibed.analyze_checkins(loaded_data, weekly_output=weekly_buffer, styles_output=styles_buffer)
-                    body = 'BeerBot found a check-in export in your email and created summaries by week & style,' \
-                           ' attached below.\n\n'
-                    body += 'Note on "estimated" field: ' \
-                            '* = Some measures guessed from serving. ** = some servings missing'
-                    weekly = make_attachment(weekly_buffer, 'beerbot-weekly-summary.csv', 'text/csv')
-                    styles = make_attachment(styles_buffer, 'beerbot-checkin-styles.csv', 'text/csv')
-                    send_email_response(reply_to, body, [weekly, styles])
+                    elif export_type == EXPORT_TYPE_CHECKINS:
+                        weekly_buffer = StringIO()
+                        styles_buffer = StringIO()
+                        imbibed.analyze_checkins(loaded_data, weekly_output=weekly_buffer, styles_output=styles_buffer)
+                        body = 'BeerBot found a check-in export in your email and created summaries by week & style,' \
+                               ' attached below.\n\n'
+                        body += 'Note on "estimated" field: ' \
+                                '* = Some measures guessed from serving. ** = some servings missing'
+                        weekly = make_attachment(weekly_buffer, 'beerbot-weekly-summary.csv', 'text/csv')
+                        styles = make_attachment(styles_buffer, 'beerbot-checkin-styles.csv', 'text/csv')
+                        send_email_response(reply_to, body, [weekly, styles])
 
-            else:
-                raise Exception('Unfamiliar export type: "%s"' % export_type)
+                else:
+                    exception_message = 'Unfamiliar export type: "%s"' % export_type
+                    logger.error(exception_message)
+                    raise Exception(exception_message)
+
+            except Exception as e:
+                error_message = 'BeerBot had a problem handling your message:\n\n' \
+                                ' Here\'s a hint to the problem: %s %s' % (type(e), e)
+                send_email_response(reply_to, error_message)
+
+
+def fetch_message_from_bucket(message_id: str) -> Message:
+    """
+    Download the saved email from out local S3 and extract the relevant Message part from it
+    Args:
+        message_id:
+
+    Returns:
+
+    """
+    client = boto3.client("s3")
+    result = client.get_object(Bucket=S3_BUCKET, Key=message_id)
+    # Read the object (not compressed):
+    text = result["Body"].read().decode()
+    parser = EmailParser()
+    message = parser.parsestr(text)
+    message_payload = None
+    # AWS returns old Message format: https://docs.python.org/3.6/library/email.compat32-message.html
+    if message.is_multipart():
+        payloads = message.get_payload()
+        for payload in payloads:
+            if payload.get_content_type() == 'text/plain':
+                message_payload = payload
+                break
+    else:
+        message_payload = message
+    return message_payload
 
 
 def detect_download_link(message_text: str) -> Optional[str]:
@@ -122,7 +147,7 @@ def detect_export_type(message_text: str) -> Optional[str]:
     return export_type
 
 
-def send_email_response(to: str, action_message: str, files: List[MIMEApplication]):
+def send_email_response(to: str, action_message: str, files: List[MIMEApplication] = []):
     """
 
     Args:
