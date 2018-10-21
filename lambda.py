@@ -15,6 +15,12 @@ from email.mime.application import MIMEApplication
 from io import StringIO
 from typing import Optional, List
 
+try:
+    # noinspection PyUnresolvedReferences
+    from bot_version import version
+except ModuleNotFoundError:
+    version = None
+
 S3_BUCKET = 'org.phase.beerbot.mail.incoming'
 
 EXPORT_TYPE_LIST = 'list'
@@ -175,6 +181,9 @@ BeerBot was created by @parsingphase (https://untappd.com/user/parsingphase).
 Contribute to caffeinated coding at https://ko-fi.com/parsingphase
 
 '''
+    if version is not None:
+        body += '-- \n%s' % version
+
     part = MIMEText(body)
     msg.attach(part)
 
