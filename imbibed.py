@@ -12,6 +12,7 @@ from typing import TextIO
 
 DEFAULT_UNIT = 'pint'
 DEFAULT_SERVING_SIZES = {'draft': 568 / 2, 'cask': 568 / 2, 'taster': 150, 'bottle': 330, 'can': 330}
+MAX_VALID_MEASURE = 2500  # For detection of valid inputs. More than a yard of ale or a Maß
 
 
 def file_contents(file_path: str) -> Optional[str]:
@@ -21,15 +22,27 @@ def file_contents(file_path: str) -> Optional[str]:
 
 
 def parse_measure(measure_string: str) -> int:
+    """
+    Read a measure as recorded in the comment field and parse it into a number of millilitres
+    Args:
+        measure_string: String as found in square brackets
+
+    Returns:
+        Integer number of ml
+    """
     divisors = {'quarter': 4, 'third': 3, 'half': 2}
-    divisors_match = '|'.join(divisors.keys())
-    units = {'ml': 1, 'litre': 1000, 'liter': 1000, 'pint': 568}
-    unit_match = '|'.join(units.keys())
+    divisor_match = '(?P<divisor_text>' + '|'.join(divisors.keys()) + ')'
+    units = {'ml': 1, 'litre': 1000, 'liter': 1000, 'pint': 568, 'sip': 0, 'taste': 0}
+    unit_match = '(?P<unit>' + '|'.join(units.keys()) + ')s?'  # allow plurals
+    optional_unit_match = '(' + unit_match + ')?'
+    fraction_match = '(?P<fraction>\d+/\d+)'
+    quantity_match = '(?P<quantity>\d+)'
+    optional_space = '\s*'
     candidate_matches = [
-        '^(?P<unit>' + unit_match + ')$',
-        '^(?P<quantity>\d+)(?P<unit>' + unit_match + ')$',
-        '^(?P<divisor_text>' + divisors_match + ')(?P<unit>' + unit_match + ')?$',
-        '^(?P<fraction>\d+/\d+)(?P<unit>' + unit_match + ')?$',
+        '^' + unit_match + '$',
+        '^' + quantity_match + optional_space + optional_unit_match + '$',
+        '^' + divisor_match + optional_space + optional_unit_match + '$',
+        '^' + fraction_match + optional_space + optional_unit_match + '$',
     ]
 
     match = None
@@ -51,12 +64,16 @@ def parse_measure(measure_string: str) -> int:
         elif 'fraction' in match_dict:
             fraction_parts = [int(s) for s in match_dict['fraction'].split('/')]
             quantity = quantity * fraction_parts[0] / fraction_parts[1]
+
+    if quantity > MAX_VALID_MEASURE:
+        raise Exception('Measure of [%s] appears to be invalid. Did you miss out a unit?' % measure_string)
+
     return int(quantity)
 
 
 def measure_from_comment(comment: str) -> Optional[int]:
     """
-    Extract any mention of a measure (in square brackets) from the comment string on a checkin, if possible
+    Extract any mention of a measure (in square brackets) from the comment string on a checkin, and parse it
 
     Args:
         comment: Checking comment field
