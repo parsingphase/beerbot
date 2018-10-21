@@ -75,7 +75,7 @@ def lambda_handler(event, context):
                             styles_output=styles_buffer,
                             brewery_output=breweries_buffer
                         )
-                        body = 'BeerBot found a check-in export in your email and created the following summaries\n' \
+                        body = 'BeerBot found a check-in export in your email and created the following summaries:\n\n' \
                                ' checkin-summary: summarises consumption and score by week\n' \
                                ' checkin-styles: styles you\'ve checked in, most common first\n' \
                                ' checkin-breweries: average score by brewery of all checkins & unique beers \n\n' \
@@ -189,7 +189,9 @@ def send_email_response(to: str, action_message: str, files: List[MIMEApplicatio
 
 BeerBot was created by @parsingphase (https://untappd.com/user/parsingphase).
 Contribute to caffeinated coding at https://ko-fi.com/parsingphase
+
 This report was created by "%s"
+
 ''' % version
 
     part = MIMEText(body)
