@@ -204,16 +204,17 @@ def analyze_checkins(
                     'total_score': 0,
                     'unique_rated': 0,
                     'unique_total_score': 0,
-                    'unique_beers': []
+                    'unique_beers': [],
+                    'rated_beers': {},  # collect repeat ratings for the same beer
                 }
             breweries[brewery_name]['count'] += 1
             if checkin['rating_score']:
                 breweries[brewery_name]['rated'] += 1
                 breweries[brewery_name]['total_score'] += float(checkin['rating_score'])
-                if checkin['beer_name'] not in breweries[brewery_name]['unique_beers']:
-                    breweries[brewery_name]['unique_beers'].append(checkin['beer_name'])
-                    breweries[brewery_name]['unique_rated'] += 1
-                    breweries[brewery_name]['unique_total_score'] += float(checkin['rating_score'])
+                beer_name = checkin['beer_name']
+                if beer_name not in breweries[brewery_name]['rated_beers']:
+                    breweries[brewery_name]['rated_beers'][beer_name] = []
+                breweries[brewery_name]['rated_beers'][beer_name].append(float(checkin['rating_score']))
 
     # Gather weeks
     weekly = {}
@@ -337,14 +338,17 @@ def write_breweries_summary(breweries, brewery_output):
         if breweries[brewery_name]['rated']:
             breweries[brewery_name]['average_score'] = \
                 round(breweries[brewery_name]['total_score'] / breweries[brewery_name]['rated'], 2)
-        else:
-            breweries[brewery_name]['average_score'] = ''
-
-        if breweries[brewery_name]['unique_rated']:
+            for b in breweries[brewery_name]['rated_beers']:
+                breweries[brewery_name]['unique_rated'] += 1
+                breweries[brewery_name]['unique_total_score'] += \
+                    sum(breweries[brewery_name]['rated_beers'][b]) / len(breweries[brewery_name]['rated_beers'][b])
+                # Add the *average score for this beer's checkins* to the unique total score
             breweries[brewery_name]['unique_average_score'] = \
                 round(breweries[brewery_name]['unique_total_score'] / breweries[brewery_name]['unique_rated'], 2)
         else:
+            breweries[brewery_name]['average_score'] = ''
             breweries[brewery_name]['unique_average_score'] = ''
+
     brewery_list = list(breweries.values())
     brewery_list.sort(key=lambda b: ((0 - b['unique_average_score']) if b['unique_average_score'] else 0, b['brewery']))
     breweries_writer = csv.writer(brewery_output)
