@@ -7,6 +7,7 @@ import requests
 import stock_check
 
 from botocore.exceptions import ClientError
+from bot_version import version
 from email.parser import Parser as EmailParser
 from email.message import Message
 from email.mime.multipart import MIMEMultipart
@@ -14,12 +15,6 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from io import StringIO
 from typing import Optional, List
-
-try:
-    # noinspection PyUnresolvedReferences
-    from bot_version import version
-except ModuleNotFoundError:
-    version = None
 
 S3_BUCKET = 'org.phase.beerbot.mail.incoming'
 
@@ -182,7 +177,7 @@ Contribute to caffeinated coding at https://ko-fi.com/parsingphase
 
 '''
     if version is not None:
-        body += '-- \n%s' % version
+        body += '-- \n%s\n' % version
 
     part = MIMEText(body)
     msg.attach(part)
