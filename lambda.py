@@ -57,22 +57,37 @@ def lambda_handler(event, context):
                             loaded_data,
                             stocklist_output=stocklist_buffer,
                             styles_output=styles_buffer)
-                        body = 'BeerBot found a list export in your email and generated a stock list, attached below.'
-                        stock_list = make_attachment(stocklist_buffer, 'beerbot-stocklist.csv', 'text/csv')
-                        style_summary = make_attachment(styles_buffer, 'beerbot-list-summary.csv', 'text/csv')
-                        send_email_response(reply_to, body, [stock_list, style_summary])
+                        body = 'BeerBot found a list export in your email and generated a stock list and' \
+                               ' summary of styles, attached below.'
+                        attachments = [
+                            make_attachment(stocklist_buffer, 'bb-stocklist.csv', 'text/csv'),
+                            make_attachment(styles_buffer, 'bb-stocklist-summary.csv', 'text/csv'),
+                        ]
+                        send_email_response(reply_to, body, attachments)
 
                     elif export_type == EXPORT_TYPE_CHECKINS:
                         weekly_buffer = StringIO()
                         styles_buffer = StringIO()
-                        imbibed.analyze_checkins(loaded_data, weekly_output=weekly_buffer, styles_output=styles_buffer)
-                        body = 'BeerBot found a check-in export in your email and created summaries by week & style,' \
-                               ' attached below.\n\n'
-                        body += 'Note on "estimated" field: ' \
-                                '* = Some measures guessed from serving. ** = some servings missing'
-                        weekly = make_attachment(weekly_buffer, 'beerbot-weekly-summary.csv', 'text/csv')
-                        styles = make_attachment(styles_buffer, 'beerbot-checkin-styles.csv', 'text/csv')
-                        send_email_response(reply_to, body, [weekly, styles])
+                        breweries_buffer = StringIO()
+                        imbibed.analyze_checkins(
+                            loaded_data,
+                            weekly_output=weekly_buffer,
+                            styles_output=styles_buffer,
+                            brewery_output=breweries_buffer
+                        )
+                        body = 'BeerBot found a check-in export in your email and created the following summaries\n' \
+                               ' checkin-summary: summarises consumption and score by week\n' \
+                               ' checkin-styles: styles you\'ve checked in, most common first\n' \
+                               ' checkin-breweries: average score by brewery of all checkins & unique beers \n\n' \
+                               'Note on estimated consumption: \n' \
+                               '* = Some measures guessed from serving. \n' \
+                               '** = some beers skipped due to no serving or measure\n\n'
+                        attachments = [
+                            make_attachment(weekly_buffer, 'bb-checkin-summary.csv', 'text/csv'),
+                            make_attachment(styles_buffer, 'bb-checkin-styles.csv', 'text/csv'),
+                            make_attachment(breweries_buffer, 'bb-checkin-breweries.csv', 'text/csv'),
+                        ]
+                        send_email_response(reply_to, body, attachments)
 
                 else:
                     exception_message = 'Unfamiliar export type: "%s"' % export_type
@@ -166,18 +181,16 @@ def send_email_response(to: str, action_message: str, files: List[MIMEApplicatio
     print('Sending message to %s' % to)
 
     msg = MIMEMultipart()
+    msg.add_header('X-BEERBOT-VERSION', version)
     msg['Subject'] = title
     msg['From'] = sender
 
     body = action_message + '''
 
 BeerBot was created by @parsingphase (https://untappd.com/user/parsingphase).
-
 Contribute to caffeinated coding at https://ko-fi.com/parsingphase
-
-'''
-    if version is not None:
-        body += '-- \n%s\n' % version
+This report was created by "%s"
+''' % version
 
     part = MIMEText(body)
     msg.attach(part)
