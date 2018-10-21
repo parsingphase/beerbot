@@ -81,7 +81,7 @@ def lambda_handler(event, context):
                                ' checkin-breweries: average score by brewery of all checkins & unique beers \n\n' \
                                'Note on estimated consumption: \n' \
                                '* = Some measures guessed from serving. \n' \
-                               '** = some beers skipped due to no serving or measure\n\n'
+                               '** = Some beers skipped due to no serving or measure\n\n'
                         attachments = [
                             make_attachment(weekly_buffer, 'bb-checkin-summary.csv', 'text/csv'),
                             make_attachment(styles_buffer, 'bb-checkin-styles.csv', 'text/csv'),
