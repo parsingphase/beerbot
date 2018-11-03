@@ -30,6 +30,7 @@ rm -rf "${BUILD_DIR}/lambda.zip" "${BUILD_DIR}/lambda"
 cp lambda.py "${TMP_DIR}/lambda_function.py"
 cp stock_check.py "${TMP_DIR}"
 cp imbibed.py "${TMP_DIR}"
+cp utils.py "${TMP_DIR}"
 
 BRANCH="$( git symbolic-ref --short HEAD )"
 REVISION="$( git rev-parse --short HEAD )"

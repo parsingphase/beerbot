@@ -8,3 +8,4 @@ lib
 pip-selfcheck.json
 tmp
 build
+__pycache__
