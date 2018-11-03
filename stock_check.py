@@ -4,25 +4,10 @@ import argparse
 import csv
 import sys
 import json
-from typing import Optional
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from typing import TextIO
-
-
-def file_contents(file_path: str) -> Optional[str]:
-    """
-    Load file contents into a string
-
-    Args:
-        file_path: Path of source file
-
-    Returns:
-        File contents as string
-    """
-    with open(file_path, 'r') as f:
-        contents = f.readlines()
-    return ''.join(contents)
+from utils import file_contents, fix_high_unicode
 
 
 def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, styles_output: TextIO = None) -> None:

@@ -9,16 +9,11 @@ from typing import Optional
 from datetime import timedelta
 from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
 from typing import TextIO
+from utils import file_contents
 
 DEFAULT_UNIT = 'pint'
 DEFAULT_SERVING_SIZES = {'draft': 568 / 2, 'cask': 568 / 2, 'taster': 150, 'bottle': 330, 'can': 330}
 MAX_VALID_MEASURE = 2500  # For detection of valid inputs. More than a yard of ale or a Maß
-
-
-def file_contents(file_path: str) -> Optional[str]:
-    with open(file_path, 'r') as f:
-        contents = f.readlines()
-    return ''.join(contents)
 
 
 def parse_measure(measure_string: str) -> int:

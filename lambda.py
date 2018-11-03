@@ -8,6 +8,7 @@ import stock_check
 
 from botocore.exceptions import ClientError
 from bot_version import version
+from email import encoders
 from email.parser import Parser as EmailParser
 from email.message import Message
 from email.mime.multipart import MIMEMultipart
@@ -213,12 +214,25 @@ This report was created by "%s"
     except ClientError as e:
         print(e.response['Error']['Message'])
     else:
-        print("Email sent! Message ID:"),
-        print(response['MessageId'])
+        print("Email sent! Message ID:", response['MessageId'])
 
 
 def make_attachment(file_data: StringIO, filename: str = None, mime_type: str = 'application/csv') -> MIMEApplication:
-    part = MIMEApplication(file_data.getvalue(), mime_type.split('/')[1])
+    """
+    Convert buffer into a MIME file attachment
+
+    Args:
+        file_data: buffer data
+        filename: Filename for attachment
+        mime_type: Content type, treated as application/*
+
+    Returns:
+        MIMEApplication part
+    """
+    part = MIMEApplication(file_data.getvalue(), mime_type.split('/')[1], _encoder=encoders.encode_noop)
+    # Very annoying error on AWS above:
+    # encode_base64 and encode_quopri both escape 3+byte unicode chars (above \u00ff) back to \u*** format
+    # So - as we're sending UTF8 CSVs only at the moment, we just send them unencoded
     if filename is None:
         filename = 'beerbot-export.csv'
     part.add_header('Content-Disposition', 'attachment', filename=filename)
