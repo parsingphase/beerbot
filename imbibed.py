@@ -140,11 +140,20 @@ def analyze_checkins(
     daily = {}
     styles = {}
     breweries = {}
+
+    first_date = None
+    last_date = None
+
     for checkin in source_data:
         # fields of interest: comment, created_at, beer_abv, serving_type
         abv = float(checkin['beer_abv'])
         created_at = parse_date(checkin['created_at'])  # <class 'datetime.datetime'>
-        date_key = created_at.date().isoformat()
+        created_at_date = created_at.date()
+        date_key = created_at_date.isoformat()
+        if first_date is None:
+            first_date = created_at_date
+
+        last_date = created_at_date
 
         if date_key not in daily:
             daily[date_key] = {
@@ -211,38 +220,70 @@ def analyze_checkins(
                     breweries[brewery_name]['rated_beers'][beer_name] = []
                 breweries[brewery_name]['rated_beers'][beer_name].append(float(checkin['rating_score']))
 
-    # Gather weeks
-    weekly = {}
-    for date_key in daily:
+    if weekly_output:
+        # Gather weeks
+        weekly = {}
+        for date_key in daily:
 
-        # calculate week
-        date = parse_date(date_key)
-        iso_calendar = date.isocalendar()  # Y - W - dow
-        week_key = '%d-W%02d' % iso_calendar[0:2]
-        days_since_monday = iso_calendar[2] - 1
-        monday = date - timedelta(days=days_since_monday)
-        if week_key not in weekly:
-            weekly[week_key] = {
-                'week': week_key,
-                'commencing': monday.date().isoformat(),
-                'drinks': 0,
-                'units': 0,
-                'alcohol_ml': 0,
-                'beverage_ml': 0,
-                'estimated': '',
-                'rated': 0,
-                'total_score': 0.0,
-            }
+            # calculate week
+            date = parse_date(date_key)
+            iso_calendar = date.isocalendar()  # Y - W - dow
+            week_key = '%d-W%02d' % iso_calendar[0:2]
+            weekday = iso_calendar[2]
+            days_since_monday = weekday - 1
+            monday = date - timedelta(days=days_since_monday)
 
-        for k in daily[date_key]:
-            if k == 'estimated':
-                if len(daily[date_key][k]) > len(weekly[week_key][k]):
-                    weekly[week_key][k] = daily[date_key][k]
+            if week_key in weekly:
+                # Existing week
+                weekly[week_key]['dry_days'] -= 1
 
             else:
-                weekly[week_key][k] += daily[date_key][k]
+                # New week
+                weekly[week_key] = {
+                    'week': week_key,
+                    'commencing': monday.date().isoformat(),
+                    'drinks': 0,
+                    'units': 0,
+                    'alcohol_ml': 0,
+                    'beverage_ml': 0,
+                    'estimated': '',
+                    'rated': 0,
+                    'total_score': 0.0,
+                    'dry_days': 6,
+                }
 
-    if weekly_output:
+            for k in daily[date_key]:
+                if k == 'estimated':
+                    # Get the most uncertain, ie longest, estimate flag (* or **) in this time period
+                    if len(daily[date_key][k]) > len(weekly[week_key][k]):
+                        weekly[week_key][k] = daily[date_key][k]
+
+                else:
+                    weekly[week_key][k] += daily[date_key][k]
+
+        # Fill in blank weeks
+        iso_calendar = first_date.isocalendar()  # Y - W - dow
+        weekday = iso_calendar[2]
+        days_since_monday = weekday - 1
+        next_monday = first_date - timedelta(days=days_since_monday)
+        while next_monday <= last_date:
+            iso_calendar = next_monday.isocalendar()  # Y - W - dow
+            week_key = '%d-W%02d' % iso_calendar[0:2]
+            if week_key not in weekly:
+                weekly[week_key] = {
+                    'week': week_key,
+                    'commencing': next_monday.isoformat(),
+                    'drinks': 0,
+                    'units': 0,
+                    'alcohol_ml': 0,
+                    'beverage_ml': 0,
+                    'estimated': '',
+                    'rated': 0,
+                    'total_score': 0.0,
+                    'dry_days': 7,
+                }
+            next_monday += timedelta(weeks=1)
+
         write_weekly_summary(weekly, weekly_output)
 
     if daily_output:
@@ -257,16 +298,17 @@ def analyze_checkins(
 
 def write_weekly_summary(weekly, weekly_output):
     weekly_writer = csv.writer(weekly_output)
-    keys = ['drinks', 'average_score', 'beverage_ml', 'alcohol_ml', 'units', 'estimated', ]
+    keys = ['drinks', 'average_score', 'beverage_ml', 'alcohol_ml', 'units', 'dry_days', 'estimated']
     output_row = ['week', 'commencing'] + keys
     weekly_writer.writerow(output_row)
-    for week_key in weekly:
+
+    for week_key in sorted(weekly):
         week_row = weekly[week_key]
         # Process average scores
         week_row['average_score'] = round(week_row['total_score'] / week_row['rated'], 2) \
             if week_row['rated'] else None
 
-        output_row = [week_key, week_row['commencing']]
+        output_row = [week_row['week'], week_row['commencing']]
         for k in keys:
             cell_value = week_row[k]
             if k not in ('estimated', 'average_score', 'total_score') and cell_value is not None:
@@ -281,7 +323,7 @@ def write_daily_summary(daily, daily_output):
     daily_writer = csv.writer(daily_output)
     output_row = ['date'] + keys
     daily_writer.writerow(output_row)
-    for date_key in daily:
+    for date_key in sorted(daily):
         day_row = daily[date_key]
         # Process average scores
         day_row['average_score'] = round(day_row['total_score'] / day_row['rated'], 2) \
