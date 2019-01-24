@@ -1,3 +1,6 @@
 ## Instructions for beerbot go here
 
--  [{{ site.github.project_title }}]({{ site.github.repository_url }})
+-  Source code: [{{ site.github.project_title }}]({{ site.github.repository_url }})
+
+
+{% include footer.md %}
