@@ -11,11 +11,32 @@ Otherwise standard sizes are guessed from the serving type; edit these default v
 
 Usage:
 
-    ./imbibed.py data/input.json --output data/output.csv [--weekly]
+    ./imbibed.py data/input.json --output data/output.csv --weekly|--daily|--style|--brewery
+   
+Choose a summary type from one of `--weekly`, `--daily`, `--style`, `--brewery`   
     
 Run with `--help` for further details
 
  **Note** This script is designed to help monitor healthy levels of consumption, not as a scorekeeper.
+ 
+##### Filtering
+
+You can use zero or more --filter clauses to select only certain rows, according to the JSON keys in the export.
+
+The syntax is `"--filter=KEY|OPERATOR|VALUE"`, eg `"--filter=created_at>2018-11" "--filter=created_at<2019"`
+
+Where:
+ - `KEY` is the case sensitive JSON key from the source file. Useful ones include `created_at`, `venue_name`, `venue_country`
+ - `OPERATOR` is one of: 
+   - `=` Match
+   - `^` No match
+   - `>` Greater than
+   - `<` Less than
+   - `~` Starts with
+ - `VALUE` is the value to compare against, in a case insensitive manner. Leaving the value blank with `=` allows matching of an empty field.
+ Note that all values are processed as strings, so `created_at>2018-11` will include everything from 2018-11-01 onwards  
+ 
+Use of quotes (`"`) around the arguments will usually be required to avoid them being intercepted by the shell command line.
  
 #### stock_check.py
  
