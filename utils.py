@@ -3,12 +3,13 @@ import re
 import requests
 
 
-def file_contents(file_path: str) -> Optional[str]:
+def file_contents(file_path: str, verbose: bool = False) -> Optional[str]:
     """
     Load file contents into a string
 
     Args:
         file_path: Path or URL of source file
+        verbose: Whether to display debug notes
 
     Returns:
         File contents as string
@@ -17,15 +18,17 @@ def file_contents(file_path: str) -> Optional[str]:
 
     match = re.match('^(f|ht)tp(s?)://', file_path)
     if match:
-        print("Fetch from URL")
+        if verbose:
+            print("Fetch from URL")
         r = requests.get(file_path)
         contents = r.content.decode('utf-8')  # string
     else:
-        print("Load from file")
+        if verbose:
+            print("Load from file")
         with open(file_path, 'r') as f:
             contents = f.readlines()
 
-    if contents:
+    if contents and verbose:
         print(contents)
 
     return ''.join(contents)
@@ -42,6 +45,7 @@ def fix_high_unicode(input: str) -> str:
         unescaped string
 
     """
+
     def uc(n):
         fix = chr(int(n[1], 16))
         print('Replace', n, 'with', fix)

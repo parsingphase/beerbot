@@ -103,7 +103,10 @@ def measure_from_serving(serving: str) -> Optional[int]:
 def parse_cli_args():
     parser = argparse.ArgumentParser(
         description='Analyse consumption of alcoholic drinks from an Untappd JSON export file',
-        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--weekly|--daily|--style|--brewery] [--help]'
+        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--weekly|--daily|--style|--brewery] [--help]',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog='Filter is based on JSON input keys.\nExample usages:\n' +
+               '    "--filter=venue_name=The Red Lion"\n    "--filter=created_at>2017-10-01"'
     )
     parser.add_argument('source', help='Path to source file (export.json)')
     parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
@@ -113,6 +116,11 @@ def parse_cli_args():
     group.add_argument('--weekly', help='Summarise checkins by week', action='store_true')
     group.add_argument('--style', help='Summarise styles of drinks checked in', action='store_true')
     group.add_argument('--brewery', help='Summarise checkins by brewery', action='store_true')
+
+    parser.add_argument('--filter',
+                        metavar='RULE',
+                        help='Filter input list by rule',
+                        action='append')
 
     args = parser.parse_args()
     return args
@@ -403,6 +411,11 @@ def run_cli():
     source = args.source
     dest = args.output
     source_data = json.loads(file_contents(source))
+
+    filter_strings = args.filter
+    if filter_strings:
+        source_data = filter_source_data(filter_strings, source_data)
+
     if dest:
         output_handle = open(dest, 'w')
     else:
@@ -421,6 +434,70 @@ def run_cli():
 
     if dest:
         output_handle.close()
+
+
+def filter_source_data(filter_strings: list, source_data: list, verbose: bool=False):
+    ruleset = []
+
+    def make_test(key: str, comparator: str, value: str):
+
+        def test_empty(row):
+            result = row[key] is None
+            if verbose:
+                print('Check [%s] (%s) is None: %s' % (key, row[key], repr(result)))
+            return result
+
+        def test_equals(row):
+            result = row[key] == value
+            if verbose:
+                print('Check [%s] (%s) = %s: %s' % (key, row[key], value, repr(result)))
+            return result
+
+        def test_greater(row):
+            result = row[key] > value
+            if verbose:
+                print('Check [%s] (%s) > %s: %s' % (key, row[key], value, repr(result)))
+            return result
+
+        def test_less(row):
+            result = row[key] < value
+            if verbose:
+                print('Check [%s] (%s) < %s: %s' % (key, row[key], value, repr(result)))
+            return result
+
+        if comparator == '=':
+            if value == '':
+                test = test_empty
+            else:
+                test = test_equals
+        elif comparator == '>':
+            test = test_greater
+        elif comparator == '<':
+            test = test_less
+        else:
+            raise Exception('Bad rule comparator ' + comparator)
+
+        return test
+
+    for filter_string in filter_strings:
+        parts = re.match(r'(?P<key>[a-z_]+)(?P<comparator>[=<>])(?P<value>.*)', filter_string)
+
+        if parts is None:
+            raise Exception('Failed to parse rule: ' + filter_string)
+
+        ruleset.append({'test': make_test(**parts.groupdict()), 'filter': parts.groupdict()})
+
+    def input_filter(row):
+        result = True
+        for rule in ruleset:
+            if not rule['test'](row):
+                result = False
+                break
+
+        return result
+
+    source_data = [row for row in source_data if input_filter(row)]
+    return source_data
 
 
 if __name__ == '__main__':
