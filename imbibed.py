@@ -415,6 +415,7 @@ def run_cli():
     filter_strings = args.filter
     if filter_strings:
         source_data = filter_source_data(filter_strings, source_data)
+        # print(json.dumps(source_data, indent=True))
 
     if dest:
         output_handle = open(dest, 'w')
@@ -436,33 +437,56 @@ def run_cli():
         output_handle.close()
 
 
-def filter_source_data(filter_strings: list, source_data: list, verbose: bool=False):
+def filter_source_data(filter_strings: list, source_data: list, verbose: bool = False):
+    """
+    Filter source data according to a list of rules
+    Args:
+        filter_strings: The rules in simple string format
+        source_data: JSON source data from export
+        verbose: Emit debug if true
+
+    Returns:
+        Filtered source data
+    """
+
     ruleset = []
 
-    def make_test(key: str, comparator: str, value: str):
+    def create_test_function(key: str, comparator: str, value: str):
 
         def test_empty(row):
-            result = row[key] is None
+            result = row[key] is None or row[key] == ''
             if verbose:
                 print('Check [%s] (%s) is None: %s' % (key, row[key], repr(result)))
             return result
 
         def test_equals(row):
-            result = row[key] == value
+            result = row[key] is not None and row[key].lower() == value.lower()
             if verbose:
                 print('Check [%s] (%s) = %s: %s' % (key, row[key], value, repr(result)))
             return result
 
         def test_greater(row):
-            result = row[key] > value
+            result = row[key] is not None and row[key].lower() > value.lower()
             if verbose:
                 print('Check [%s] (%s) > %s: %s' % (key, row[key], value, repr(result)))
             return result
 
         def test_less(row):
-            result = row[key] < value
+            result = row[key] is not None and row[key].lower() < value.lower()
             if verbose:
                 print('Check [%s] (%s) < %s: %s' % (key, row[key], value, repr(result)))
+            return result
+
+        def test_starts(row):
+            result = row[key] is not None and row[key].lower().find(value.lower()) == 0
+            if verbose:
+                print('Check [%s] (%s) ~ %s: %s' % (key, row[key], value, repr(result)))
+            return result
+
+        def test_not(row):
+            result = row[key] is None or row[key].lower() != value.lower()
+            if verbose:
+                print('Check [%s] (%s) ^ %s: %s' % (key, row[key], value, repr(result)))
             return result
 
         if comparator == '=':
@@ -474,18 +498,22 @@ def filter_source_data(filter_strings: list, source_data: list, verbose: bool=Fa
             test = test_greater
         elif comparator == '<':
             test = test_less
+        elif comparator == '~':
+            test = test_starts
+        elif comparator == '^':
+            test = test_not
         else:
             raise Exception('Bad rule comparator ' + comparator)
 
         return test
 
     for filter_string in filter_strings:
-        parts = re.match(r'(?P<key>[a-z_]+)(?P<comparator>[=<>])(?P<value>.*)', filter_string)
+        parts = re.match(r'(?P<key>[a-z_]+)(?P<comparator>[=<>~^])(?P<value>.*)', filter_string)
 
         if parts is None:
             raise Exception('Failed to parse rule: ' + filter_string)
 
-        ruleset.append({'test': make_test(**parts.groupdict()), 'filter': parts.groupdict()})
+        ruleset.append({'test': create_test_function(**parts.groupdict()), 'filter': parts.groupdict()})
 
     def input_filter(row):
         result = True
