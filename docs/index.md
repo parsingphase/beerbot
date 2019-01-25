@@ -31,10 +31,11 @@ at [{{ site.github.project_title }}]({{ site.github.repository_url }}#readme).
 This is the slightly more powerful, but less convenient option.
 
 ### Forward by email
-For maximum convenience you can just forward the export emails from Untappd to a robot address. 
-At the moment, I'm not making this address globally available so that I can keep usage under control, 
-so please email me at [richard@phase.org](mailto:richard@phase.org?subject=Beerbot Access Request) if you want to use 
-this (doesn't matter if you don't know me, this is only about controlling numbers).
+Untappd delivers your exports as an email containing a download link.
+For maximum convenience you can just forward these emails to a robotic email address and it'll reply with the results. 
+At the moment, this service is in Beta so I'm not making this address globally available. 
+However, if you'd like to use it just email me at [richard@phase.org](mailto:richard@phase.org?subject=Beerbot Access Request). 
+It doesn't matter if you don't know me, this is only about controlling numbers while I check functionality and running costs.
 
 ### Getting your data
 
