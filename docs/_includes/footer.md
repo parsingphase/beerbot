@@ -1,4 +1,4 @@
 -----------
-This project is not affiliated in any way with Untappd, Inc
-
-Tools are provided by Richard George and are used at your own risk
+All code and text © Richard George, 2018-2019
+ 
+This project is not affiliated with or endorsed by Untappd, Inc.

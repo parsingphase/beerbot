@@ -9,3 +9,6 @@ pip-selfcheck.json
 tmp
 build
 __pycache__
+Gemfile.lock
+docs/.sass-cache
+docs/_site
