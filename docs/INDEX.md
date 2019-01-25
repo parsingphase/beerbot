@@ -2,7 +2,21 @@
 ---
 ## Beerbot: an enhanced view of your Untappd data
 
-Beerbot is a tool to make better use of your [Untappd](https://untappd.com/) lists and checkin history.
+Beerbot is a tool to make better use of your [Untappd](https://untappd.com/) lists and checkin history. 
+It generates convenient stock lists, weekly and monthly summaries of the beers you've drunk, 
+and analysis of your favourite styles and venues. Outputs are CSVs that you can format, analyse and print in any 
+spreadsheet program.
+
+#### Stock list
+[<img src="images/bb-stocklist.png" alt="Example stocklist">](images/bb-stocklist.png) [Sample csv](files/stocklist-sample.csv)
+
+#### Weekly summary
+[<img src="images/bb-checkin-summary.png" alt="Example weekly summary">](images/bb-checkin-summary.png) [Sample csv](files/checkin-summary-sample.csv)
+
+#### Breweries analysis
+[<img src="images/bb-checkin-breweries.png" alt="Example summary">](images/bb-checkin-breweries.png) [Sample csv](files/checkin-breweries-sample.csv)
+
+#### Using Beerbot
 
 To use it, you'll need to be able to use Untappd's export tools, which means you'll need a paid 
 [Untappd Supporter Account](https://untappd.com/supporter).
