@@ -3,7 +3,7 @@
 Tools for processing [Untappd Supporter](https://untappd.com/supporter) export data
 
 This is code documentation intended for technical users. General documentation can be found at 
-[beerbot.phase.org](https://beerbot.phase.org) or in the [docs](docs) folder.
+[beerbot.phase.org](https://beerbot.phase.org) or in the [docs](docs/index.md) folder.
 
 #### imbibed.py
 
