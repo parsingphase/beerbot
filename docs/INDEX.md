@@ -27,5 +27,10 @@ this (doesn't matter if you don't know me, this is only about controlling number
 The process for getting your data, whether for personal download or for email forwarding is described in 
 "[Exporting your data](exporting.md)". 
 
+### Making the best of Beerbot
+
+Beerbot will make a best effort to process any export it's fed, but you can get a lot more out of it if you
+[feed it the best data](feedingBeerbot.md).
+
 
 {% include footer.md %}
