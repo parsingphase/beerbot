@@ -2,6 +2,9 @@
 
 Tools for processing [Untappd Supporter](https://untappd.com/supporter) export data
 
+This is code documentation intended for technical users. General documentation can be found at 
+[beerbot.phase.org](https://beerbot.phase.org) or in the [docs](docs) folder.
+
 #### imbibed.py
 
 Build a CSV of daily & weekly consumption from your Beer History JSON export.
