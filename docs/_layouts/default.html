@@ -16,8 +16,14 @@
     <div class="wrapper">
       <header>
         <h1 class="header">{{ site.title | default: site.github.repository_name }}</h1>
-        <p class="header">{{ site.description | default: site.github.project_tagline }}</p>
 
+          {% if site.nav %}
+            <ul class="nav">
+                {% for page in site.nav %}
+                    <li><a href="{{ page.link }}">{{ page.title }}</a></li>
+                {% endfor %}
+            </ul>
+          {% endif %}
         <ul>
           {% if site.show_downloads %}
             <li class="download"><a class="buttons" href="{{ site.github.zip_url }}">Download ZIP</a></li>
@@ -39,6 +45,11 @@
 
       <section>
         {{ content }}
+      </section>
+
+      <section class="footer">
+                <p><small>© Richard George, 2018-2019<br />
+                This project is not affiliated with or endorsed by Untappd, Inc.</small></p>
       </section>
 
       <footer>

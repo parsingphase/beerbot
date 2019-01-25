@@ -1,7 +1,7 @@
 ---
 ---
 
-## Exporting your data from Untappd
+# Exporting your data from Untappd
 
 **Reminder: You have to be an Untappd Supporter to use this feature.**
 
@@ -12,7 +12,7 @@ You can export two kinds of data from Untappd - Checkins (aka Beer History) and 
 ⚠️ For some reason, the export buttons are not shown when you view Untappd on a small mobile device - you'll have to do 
 this on a tablet, laptop or desktop.
 
-### Exporting checkins
+## Exporting checkins
 
 Your "Beer History" page gives you the following options:
 
@@ -23,7 +23,7 @@ Beerbot works with JSON data, but you can also request a CSV export for your own
 To export your checkin history, click the JSON button, wait a couple of minutes (usually), then check your email 
 for a message entitled "Your Export from Untappd".
 
-### Exporting a list
+## Exporting a list
 
 Individual list pages also allow you to export their data. As before, Beerbot expects JSON data.
 
@@ -32,7 +32,7 @@ Individual list pages also allow you to export their data. As before, Beerbot ex
 To export a list, click the JSON button, wait a couple of minutes (usually), then check your email 
 for a message entitled "Your Export from Untappd".
 
-### Using the exports
+## Using the exports
 
 If you're running the code at home, click the link in the export email, download the file that's fetched in your browser, 
 and refer to [{{ site.github.project_title }}]({{ site.github.repository_url }}#readme).
@@ -41,10 +41,7 @@ If you've [asked for access](INDEX.md#forward-by-email), just forward the whole,
 been given. Beerbot will reply to the address you send from.  Please use the simpler forwarding option in your mail 
 client, don't "forward as attachment".
 
-## Further information
+# Further information
 
 Untappd's documentation on list exports is 
 [here](https://help.untappd.com/support/solutions/articles/25000001978-where-can-i-find-the-exportable-data-feature-).
-
-
-{% include footer.md %}

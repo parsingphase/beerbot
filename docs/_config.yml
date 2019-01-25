@@ -1,2 +1,11 @@
 theme: jekyll-theme-dinky
 repository: parsingphase/untappd-tools
+lang: en-GB
+title: Beerbot
+nav:
+  - title: "Introduction"
+    link: ./
+  - title: "Untappd Exports"
+    link: ./exporting.html
+  - title: "Care & Feeding"
+    link: ./feedingBeerbot.html

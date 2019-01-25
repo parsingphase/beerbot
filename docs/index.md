@@ -45,6 +45,3 @@ The process for getting your data, whether for personal download or for email fo
 
 Beerbot will make a best effort to process any export it's fed, but you can get a lot more out of it if you
 [feed it the best data](feedingBeerbot.md).
-
-
-{% include footer.md %}
