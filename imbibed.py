@@ -172,12 +172,14 @@ def analyze_checkins(
                 'estimated': '',
                 'rated': 0,
                 'total_score': 0.0,
+                'score_bands': empty_bands()
             }
 
         daily[date_key]['drinks'] += 1
         if checkin['rating_score']:
             daily[date_key]['rated'] += 1
             daily[date_key]['total_score'] += float(checkin['rating_score'])
+            daily[date_key]['score_bands'][checkin['rating_score']] += 1
 
         measure = measure_from_comment(checkin['comment'])
         if measure is None:
@@ -258,6 +260,7 @@ def analyze_checkins(
                     'rated': 0,
                     'total_score': 0.0,
                     'dry_days': 6,
+                    'score_bands': empty_bands()
                 }
 
             for k in daily[date_key]:
@@ -265,7 +268,9 @@ def analyze_checkins(
                     # Get the most uncertain, ie longest, estimate flag (* or **) in this time period
                     if len(daily[date_key][k]) > len(weekly[week_key][k]):
                         weekly[week_key][k] = daily[date_key][k]
-
+                elif k == 'score_bands':
+                    for b in daily[date_key][k]:
+                        weekly[week_key][k][b] += daily[date_key][k][b]
                 else:
                     weekly[week_key][k] += daily[date_key][k]
 
@@ -289,6 +294,7 @@ def analyze_checkins(
                     'rated': 0,
                     'total_score': 0.0,
                     'dry_days': 7,
+                    'score_bands': empty_bands()
                 }
             next_monday += timedelta(weeks=1)
 
@@ -304,10 +310,16 @@ def analyze_checkins(
         write_breweries_summary(breweries, brewery_output)
 
 
-def write_weekly_summary(weekly, weekly_output):
+def empty_bands():
+    return {str(b / 4 if b % 4 else int(b / 4)): 0 for b in range(0, 21)}
+
+
+def write_weekly_summary(weekly: dict, weekly_output: TextIO, with_score_bands: bool = True):
     weekly_writer = csv.writer(weekly_output)
     keys = ['drinks', 'average_score', 'beverage_ml', 'alcohol_ml', 'units', 'dry_days', 'estimated']
     output_row = ['week', 'commencing'] + keys
+    if with_score_bands:
+        output_row += [b / 4 for b in range(0, 21)]
     weekly_writer.writerow(output_row)
 
     for week_key in sorted(weekly):
@@ -323,13 +335,18 @@ def write_weekly_summary(weekly, weekly_output):
                 cell_value = round(cell_value, 1)
             output_row.append(cell_value)
 
+        if with_score_bands:
+            output_row += [week_row['score_bands'][b] for b in week_row['score_bands']]
+
         weekly_writer.writerow(output_row)
 
 
-def write_daily_summary(daily, daily_output):
+def write_daily_summary(daily, daily_output, with_score_bands: bool = True):
     keys = ['drinks', 'average_score', 'beverage_ml', 'alcohol_ml', 'units', 'estimated', ]
     daily_writer = csv.writer(daily_output)
     output_row = ['date'] + keys
+    if with_score_bands:
+        output_row += [b / 4 for b in range(0, 21)]
     daily_writer.writerow(output_row)
     for date_key in sorted(daily):
         day_row = daily[date_key]
@@ -343,6 +360,9 @@ def write_daily_summary(daily, daily_output):
             if k not in ('estimated', 'average_score', 'total_score') and cell_value is not None:
                 cell_value = round(cell_value, 1)
             output_row.append(cell_value)
+
+        if with_score_bands:
+            output_row += [day_row['score_bands'][b] for b in day_row['score_bands']]
 
         daily_writer.writerow(output_row)
 
