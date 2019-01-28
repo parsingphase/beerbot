@@ -1,5 +1,6 @@
 ## Resources in cloud map generation
 
+- https://www.datacamp.com/community/tutorials/wordcloud-python
 - https://www.geeksforgeeks.org/generating-word-cloud-python/
 - https://minimaxir.com/2016/05/wordclouds/
 - https://matplotlib.org/users/colormaps.html

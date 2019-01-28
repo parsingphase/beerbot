@@ -45,11 +45,13 @@ def generate_cloud_image(source: str, dest: Optional[str] = None):
                       ).generate(' '.join(comments))
     # plot the WordCloud image
     pyplot.figure(figsize=(8, 8), facecolor=None)
-    pyplot.imshow(cloud)
+
+    interpolation = 'spline16'
+    pyplot.imshow(cloud, interpolation=interpolation)
     pyplot.axis("off")
     pyplot.tight_layout(pad=0)
     if dest:
-        pyplot.savefig(dest, format=dest.split('.')[-1])
+        pyplot.savefig(dest, format=dest.split('.')[-1], interpolation=interpolation)
     else:
         pyplot.show()
 
