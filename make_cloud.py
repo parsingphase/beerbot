@@ -2,12 +2,13 @@
 
 import argparse
 import json
+import numpy
 import re
 
-import matplotlib.pyplot as plt
-
+from matplotlib import cm, colors, pyplot
+from typing import Optional
 from utils import file_contents
-from wordcloud import WordCloud, STOPWORDS
+from wordcloud import WordCloud
 
 
 def parse_cli_args():
@@ -24,32 +25,40 @@ def run_cli():
     args = parse_cli_args()
     source = args.source
     dest = args.output
+    generate_cloud_image(source, dest)
+
+
+def generate_cloud_image(source: str, dest: Optional[str] = None):
     source_data = json.loads(file_contents(source))
     comments = [
         re.sub('\[.*\]', '', checkin['comment']).lower() for checkin in source_data
         if checkin['comment'] is not None and checkin['comment'] != ''
     ]
-
     # post-filter anything we've removed all text from
     comments = [comment for comment in comments if comment != '']
 
-    #    print(comments)
-
+    beer_colours = truncate_colormap(cm.get_cmap('YlOrBr'), 0.4, 1.0)  # YlOrBr, copper, autumn
     cloud = WordCloud(width=800, height=800,
                       background_color='white',
-                      stopwords=STOPWORDS,
-                      min_font_size=10).generate(' '.join(comments))
-
+                      min_font_size=10,
+                      colormap=beer_colours,
+                      ).generate(' '.join(comments))
     # plot the WordCloud image
-    plt.figure(figsize=(8, 8), facecolor=None)
-    plt.imshow(cloud)
-    plt.axis("off")
-    plt.tight_layout(pad=0)
-
+    pyplot.figure(figsize=(8, 8), facecolor=None)
+    pyplot.imshow(cloud)
+    pyplot.axis("off")
+    pyplot.tight_layout(pad=0)
     if dest:
-        plt.savefig(dest, format=dest.split('.')[-1])
+        pyplot.savefig(dest, format=dest.split('.')[-1])
     else:
-        plt.show()
+        pyplot.show()
+
+
+def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+    new_cmap = colors.LinearSegmentedColormap.from_list(
+        'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
+        cmap(numpy.linspace(minval, maxval, n)))
+    return new_cmap
 
 
 if __name__ == '__main__':
