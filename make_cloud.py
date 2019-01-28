@@ -9,6 +9,7 @@ from matplotlib import cm, colors, pyplot
 from typing import Optional
 from utils import file_contents
 from wordcloud import WordCloud
+from PIL import Image
 
 
 def parse_cli_args():
@@ -37,11 +38,18 @@ def generate_cloud_image(source: str, dest: Optional[str] = None):
     # post-filter anything we've removed all text from
     comments = [comment for comment in comments if comment != '']
 
+    # tpl = numpy.array(Image.open('resources/pint_black_800.png'))
+    tpl = numpy.array(Image.open('resources/pint_black_800.png'))
+    ftpl = flatten_rgba_template(tpl)
+
     beer_colours = truncate_colormap(cm.get_cmap('YlOrBr'), 0.4, 1.0)  # YlOrBr, copper, autumn
     cloud = WordCloud(width=800, height=800,
                       background_color='white',
                       min_font_size=10,
                       colormap=beer_colours,
+                      mask=ftpl,
+                      contour_width=1.5,
+                      contour_color='grey',
                       ).generate(' '.join(comments))
     # plot the WordCloud image
     pyplot.figure(figsize=(8, 8), facecolor=None)
@@ -61,6 +69,22 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
         'trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
         cmap(numpy.linspace(minval, maxval, n)))
     return new_cmap
+
+
+def flatten_rgba_template(data):
+    """
+    Convert 2d array of rgba lists to 2d 0/255 array
+    Args:
+        data:
+
+    Returns:
+
+    """
+    out = []
+    for row in data:
+        out.append(list(map(lambda x: 255 * (x[0] > 128), row)))
+
+    return numpy.array(out, dtype=numpy.dtype(numpy.int))
 
 
 if __name__ == '__main__':

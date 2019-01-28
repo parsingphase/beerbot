@@ -8,6 +8,7 @@ python-dateutil = "*"
 requests = ">=2.20.0"
 matplotlib = ">=3.0.0"
 wordcloud = "*"
+pillow = "*"
 
 [dev-packages]
 
