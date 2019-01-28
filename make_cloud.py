@@ -36,9 +36,9 @@ def run_cli():
     #    print(comments)
 
     cloud = WordCloud(width=800, height=800,
-                          background_color='white',
-                          stopwords=STOPWORDS,
-                          min_font_size=10).generate(' '.join(comments))
+                      background_color='white',
+                      stopwords=STOPWORDS,
+                      min_font_size=10).generate(' '.join(comments))
 
     # plot the WordCloud image
     plt.figure(figsize=(8, 8), facecolor=None)
@@ -46,7 +46,10 @@ def run_cli():
     plt.axis("off")
     plt.tight_layout(pad=0)
 
-    plt.show()
+    if dest:
+        plt.savefig(dest, format=dest.split('.')[-1])
+    else:
+        plt.show()
 
 
 if __name__ == '__main__':
