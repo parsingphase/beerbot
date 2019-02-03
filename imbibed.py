@@ -27,7 +27,17 @@ def parse_measure(measure_string: str) -> int:
     """
     divisors = {'quarter': 4, 'third': 3, 'half': 2}
     divisor_match = '(?P<divisor_text>' + '|'.join(divisors.keys()) + ')'
-    units = {'ml': 1, 'cl': 10, 'litre': 1000, 'liter': 1000, 'pint': 568, 'sip': 25, 'taste': 25}
+    units = {
+        'ml': 1,
+        'cl': 10,
+        'litre': 1000,
+        'liter': 1000,  # Accept variant spelling
+        'pint': 568,
+        'sip': 25,
+        'taste': 25,
+        'oz': 29.5735,  # Assume US Fluid ounce as UK more commonly uses ml. Difference only 29.5735 to 28.4131 anyway
+        'ounce': 29.5735
+    }
     unit_match = '(?P<unit>' + '|'.join(units.keys()) + ')s?'  # allow plurals
     optional_unit_match = '(' + unit_match + ')?'
     fraction_match = '(?P<fraction>\d+/\d+)'
