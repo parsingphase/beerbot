@@ -32,6 +32,10 @@ cp stock_check.py "${TMP_DIR}"
 cp imbibed.py "${TMP_DIR}"
 cp utils.py "${TMP_DIR}"
 
+if [[ -e config.py ]]; then
+    cp config.py "${TMP_DIR}"
+fi
+
 BRANCH="$( git symbolic-ref --short HEAD )"
 REVISION="$( git rev-parse --short HEAD )"
 CHANGES=""

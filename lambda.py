@@ -17,6 +17,11 @@ from email.mime.application import MIMEApplication
 from io import StringIO
 from typing import Optional, List
 
+try:
+    from config import config
+except ImportError:
+    config = {}
+
 S3_BUCKET = 'org.phase.beerbot.mail.incoming'
 
 EXPORT_TYPE_LIST = 'list'
@@ -65,6 +70,7 @@ def lambda_handler(event, context):
                             make_attachment(styles_buffer, 'bb-stocklist-summary.csv', 'text/csv'),
                         ]
                         send_email_response(reply_to, body, attachments)
+                        upload_report_to_s3(stocklist_buffer, 'bb-stocklist.csv')
 
                     elif export_type == EXPORT_TYPE_CHECKINS:
                         weekly_buffer = StringIO()
@@ -90,6 +96,9 @@ def lambda_handler(event, context):
                         ]
                         send_email_response(reply_to, body, attachments)
 
+                        upload_report_to_s3(weekly_buffer, 'bb-checkin-summary.csv')
+
+
                 else:
                     exception_message = 'Unfamiliar export type: "%s"' % export_type
                     logger.error(exception_message)
@@ -99,6 +108,13 @@ def lambda_handler(event, context):
                 error_message = 'BeerBot had a problem handling your message:\n\n' \
                                 ' Here\'s a hint to the problem: %s %s' % (type(e), e)
                 send_email_response(reply_to, error_message)
+
+
+def upload_report_to_s3(buffer: StringIO, filename: str):
+    if 'upload_bucket' in config and 'secret' in config:
+        s3_resource = boto3.resource('s3')
+        bucket = s3_resource.Bucket(config['upload_bucket'])
+        bucket.put_object(Body=buffer.getvalue(), Key='dummy/' + filename)
 
 
 def fetch_message_from_bucket(message_id: str) -> Message:

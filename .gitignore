@@ -12,3 +12,4 @@ __pycache__
 Gemfile.lock
 docs/.sass-cache
 docs/_site
+config.py
