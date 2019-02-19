@@ -41,7 +41,7 @@ def parse_measure(measure_string: str) -> int:
     unit_match = '(?P<unit>' + '|'.join(units.keys()) + ')s?'  # allow plurals
     optional_unit_match = '(' + unit_match + ')?'
     fraction_match = '(?P<fraction>\d+/\d+)'
-    quantity_match = '(?P<quantity>\d+)'
+    quantity_match = '(?P<quantity>[\d\.]+)'
     optional_space = '\s*'
     candidate_matches = [
         '^' + unit_match + '$',
@@ -63,17 +63,17 @@ def parse_measure(measure_string: str) -> int:
         unit = match_dict['unit'] if 'unit' in match_dict and match_dict['unit'] is not None else DEFAULT_UNIT
         quantity = units[unit]
         if 'quantity' in match_dict:
-            quantity *= int(match_dict['quantity'])
+            quantity *= float(match_dict['quantity'])
         elif 'divisor_text' in match_dict:
             quantity /= divisors[match_dict['divisor_text']]
         elif 'fraction' in match_dict:
             fraction_parts = [int(s) for s in match_dict['fraction'].split('/')]
             quantity = quantity * fraction_parts[0] / fraction_parts[1]
 
-    if quantity > MAX_VALID_MEASURE:
-        raise Exception('Measure of [%s] appears to be invalid. Did you miss out a unit?' % measure_string)
+        if quantity > MAX_VALID_MEASURE:
+            raise Exception('Measure of [%s] appears to be invalid. Did you miss out a unit?' % measure_string)
 
-    return int(quantity)
+    return int(quantity) if quantity else None
 
 
 def measure_from_comment(comment: str) -> Optional[int]:
