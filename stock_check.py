@@ -7,10 +7,10 @@ import json
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from typing import TextIO
-from utils import file_contents, fix_high_unicode
+from utils import file_contents
 
 
-def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, styles_output: TextIO = None) -> None:
+def generate_stocklist_files(source_data: list, stocklist_output: TextIO = None, styles_output: TextIO = None) -> None:
     """
     Convert the parsed JSON from a list feed into a CSV reporting stock levels and expiry
 
@@ -18,6 +18,34 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
         source_data: json data parsed into a list
         stocklist_output: buffer to write stock list to
         styles_output: buffer to write styles summary to
+    """
+    stocklist = [] if stocklist_output else None
+    style_summary = [] if styles_output else None
+
+    build_stocklists(source_data, stocklist=stocklist, style_summary=style_summary)
+
+    if stocklist_output:
+        writer = csv.writer(stocklist_output)
+        for row in stocklist:
+            writer.writerow(row)
+
+    if styles_output:
+        writer = csv.writer(styles_output)
+        for row in style_summary:
+            writer.writerow(row)
+
+
+def build_stocklists(source_data: list, stocklist: list = None, style_summary: list = None) -> None:
+    """
+    Assemble JSON data from stock list export into lists for subsequent writing to selected fiel format
+
+    Args:
+        source_data: Source data unpacked from JSON
+        stocklist:
+        style_summary:
+
+    Returns:
+
     """
     thresholds = [
         {'description': 'Undated beers', 'ends': '0000-00-00'},
@@ -56,13 +84,13 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
                     expiry_sets[idx][style] = []
                 expiry_sets[idx][style].append(item)
 
-    if stocklist_output:
-        writer = csv.writer(stocklist_output)
-        writer.writerow(['Expiry', 'Type', '#', 'Brewery', 'Beverage', 'Subtype', 'ABV', 'Serving', 'BBE'])
+    if stocklist is not None:
+
+        stocklist.append(['Expiry', 'Type', '#', 'Brewery', 'Beverage', 'Subtype', 'ABV', 'Serving', 'BBE'])
         for k, expiry_set in enumerate(expiry_sets):
             if len(expiry_sets[k]):
                 if list_has_quantities:
-                    writer.writerow(
+                    stocklist.append(
                         [
                             '%s: %d item(s) of %d beer(s)' % (
                                 thresholds[k]['description'],
@@ -72,7 +100,7 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
                         ]
                     )
                 else:
-                    writer.writerow(
+                    stocklist.append(
                         [
                             '%s: %d beer(s)' % (
                                 thresholds[k]['description'],
@@ -87,7 +115,7 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
                     drinks = expiry_sets[k][style]
                     drinks.sort(key=lambda d: (d['brewery_name'], d['beer_name']))
                     for item in drinks:
-                        writer.writerow(
+                        stocklist.append(
                             [
                                 '',
                                 style if first else '',
@@ -103,17 +131,16 @@ def build_dated_stocklist(source_data: list, stocklist_output: TextIO = None, st
                         first = False
 
                 if len(expiry_sets) > k + 1:
-                    writer.writerow([''])  # space before next
+                    stocklist.append([''])  # space before next
 
-    if styles_output:
+    if style_summary is not None:
         style_list = []
         for style in styles:
             style_list.append({'style': style, 'count': styles[style]})
         style_list.sort(key=lambda b: (0 if b['count'] is None else (0 - b['count']), b['style']))
-        styles_writer = csv.writer(styles_output)
-        styles_writer.writerow(['Styles'])
+        style_summary.append(['Styles'])
         for style_row in style_list:
-            styles_writer.writerow(
+            style_summary.append(
                 [style_row['style']] if style_row['count'] is None else [style_row['style'], style_row['count']]
             )
 
@@ -150,9 +177,9 @@ def run_cli():
     source_data = json.loads(file_contents(source))
 
     if args.summary:
-        build_dated_stocklist(source_data, styles_output=output_handle)
+        generate_stocklist_files(source_data, styles_output=output_handle)
     else:
-        build_dated_stocklist(source_data, stocklist_output=output_handle)
+        generate_stocklist_files(source_data, stocklist_output=output_handle)
 
     if dest:
         output_handle.close()

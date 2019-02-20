@@ -60,7 +60,7 @@ def lambda_handler(event, context):
                     if export_type == EXPORT_TYPE_LIST:
                         stocklist_buffer = StringIO()
                         styles_buffer = StringIO()
-                        stock_check.build_dated_stocklist(
+                        stock_check.generate_stocklist_files(
                             loaded_data,
                             stocklist_output=stocklist_buffer,
                             styles_output=styles_buffer)
