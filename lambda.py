@@ -14,6 +14,7 @@ from email.message import Message
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
+from hashlib import sha256
 from io import StringIO
 from typing import Optional, List
 
@@ -69,8 +70,10 @@ def lambda_handler(event, context):
                             make_attachment(stocklist_buffer, 'bb-stocklist.csv', 'text/csv'),
                             make_attachment(styles_buffer, 'bb-stocklist-summary.csv', 'text/csv'),
                         ]
+                        uploaded_to = upload_report_to_s3(stocklist_buffer, 'bb-stocklist.csv', reply_to)
+                        if uploaded_to:
+                            body += '\nSummary was uploaded to %s' % uploaded_to
                         send_email_response(reply_to, body, attachments)
-                        upload_report_to_s3(stocklist_buffer, 'bb-stocklist.csv')
 
                     elif export_type == EXPORT_TYPE_CHECKINS:
                         weekly_buffer = StringIO()
@@ -94,9 +97,13 @@ def lambda_handler(event, context):
                             make_attachment(styles_buffer, 'bb-checkin-styles.csv', 'text/csv'),
                             make_attachment(breweries_buffer, 'bb-checkin-breweries.csv', 'text/csv'),
                         ]
+
+                        uploaded_to = upload_report_to_s3(weekly_buffer, 'bb-checkin-summary.csv', reply_to)
+                        if uploaded_to:
+                            body += '\nSummary was uploaded to %s' % uploaded_to
+
                         send_email_response(reply_to, body, attachments)
 
-                        upload_report_to_s3(weekly_buffer, 'bb-checkin-summary.csv')
 
 
                 else:
@@ -110,11 +117,31 @@ def lambda_handler(event, context):
                 send_email_response(reply_to, error_message)
 
 
-def upload_report_to_s3(buffer: StringIO, filename: str):
+def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str) -> str:
+    """
+    Upload a file to the S3 bucket
+    Args:
+        buffer: StringIO buffer containing file data
+        filename: Name of the file to save
+        source_address: Email address of the file's submitter
+
+    Returns:
+        URL of uploaded file
+    """
+    destination = None
+
     if 'upload_bucket' in config and 'secret' in config:
         s3_resource = boto3.resource('s3')
         bucket = s3_resource.Bucket(config['upload_bucket'])
-        bucket.put_object(Body=buffer.getvalue(), Key='dummy/' + filename)
+        path = sha256((config['secret'] + '/' + source_address.lower()).encode('utf8')).hexdigest()[0:20]
+        destination = path + '/' + filename
+        bucket.put_object(
+            Body=buffer.getvalue(),
+            Key=destination,
+            GrantRead='uri="http://acs.amazonaws.com/groups/global/AllUsers"'
+        )
+
+    return get_config('upload_web_root') + destination
 
 
 def fetch_message_from_bucket(message_id: str) -> Message:
@@ -180,7 +207,7 @@ def detect_export_type(message_text: str) -> Optional[str]:
     return export_type
 
 
-def send_email_response(to: str, action_message: str, files: List[MIMEApplication] = []):
+def send_email_response(to: str, action_message: str, files: List[MIMEApplication] = None):
     """
 
     Args:
@@ -191,8 +218,11 @@ def send_email_response(to: str, action_message: str, files: List[MIMEApplicatio
     Returns:
 
     """
+    if not files:
+        files = []
+
     client = boto3.client('ses')
-    sender = 'BeerBot at Phase.org <no-reply@beerbot.phase.org>'
+    sender = get_config('reply_from', 'BeerBot at Phase.org <no-reply@beerbot.phase.org>')
     title = 'Your Untappd submission to BeerBot'
 
     print('Sending message to %s' % to)
@@ -253,3 +283,7 @@ def make_attachment(file_data: StringIO, filename: str = None, mime_type: str = 
         filename = 'beerbot-export.csv'
     part.add_header('Content-Disposition', 'attachment', filename=filename)
     return part
+
+
+def get_config(key, default=None):
+    return config.get(key, default)
