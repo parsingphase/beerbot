@@ -90,7 +90,7 @@ def lambda_handler(event, context):
                         stocklist_buffer_html = StringIO()
                         stock_check.build_html_from_list(stocklist, stocklist_buffer_html)
 
-                        uploaded_to = upload_report_to_s3(stocklist_buffer_html, 'bb-stocklist.html', reply_to)
+                        uploaded_to = upload_report_to_s3(stocklist_buffer_html, 'sl', reply_to)
                         if uploaded_to:
                             body += '\nSummary was uploaded to %s' % uploaded_to
                         send_email_response(reply_to, body, attachments)
