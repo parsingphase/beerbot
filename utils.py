@@ -1,4 +1,5 @@
-from typing import Optional
+from typing import Optional, TextIO
+import csv
 import re
 import requests
 
@@ -14,7 +15,6 @@ def file_contents(file_path: str, verbose: bool = False) -> Optional[str]:
     Returns:
         File contents as string
     """
-    contents = None
 
     match = re.match('^(f|ht)tp(s?)://', file_path)
     if match:
@@ -34,12 +34,12 @@ def file_contents(file_path: str, verbose: bool = False) -> Optional[str]:
     return ''.join(contents)
 
 
-def fix_high_unicode(input: str) -> str:
+def fix_high_unicode(suspect_string: str) -> str:
     """
     Replace any remaining \u0123 sequences with correct UTF8 symbol
 
     Args:
-        input: Potentially escaped string
+        suspect_string: Potentially escaped string
 
     Returns:
         unescaped string
@@ -51,6 +51,12 @@ def fix_high_unicode(input: str) -> str:
         print('Replace', n, 'with', fix)
         return fix
 
-    print('fhu: check : ', input)
+    print('fhu: check : ', suspect_string)
 
-    return re.sub(r'\\u([0-9a-f]{4})', uc, input)
+    return re.sub(r'\\u([0-9a-f]{4})', uc, suspect_string)
+
+
+def build_csv_from_list(stocklist: list, stocklist_output: TextIO):
+    writer = csv.writer(stocklist_output)
+    for row in stocklist:
+        writer.writerow(row)

@@ -16,7 +16,8 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from hashlib import sha256
 from io import StringIO
-from typing import Optional, List
+from typing import Optional, List, TextIO
+from utils import build_csv_from_list
 
 try:
     from config import config
@@ -58,22 +59,43 @@ def lambda_handler(event, context):
                     loaded_data = json.loads(export_data)
 
                     if export_type == EXPORT_TYPE_LIST:
-                        stocklist_buffer = StringIO()
-                        styles_buffer = StringIO()
-                        stock_check.generate_stocklist_files(
+                        stocklist = []
+                        stocklist_styles = []
+
+                        stock_check.build_stocklists(
                             loaded_data,
-                            stocklist_output=stocklist_buffer,
-                            styles_output=styles_buffer)
+                            stocklist=stocklist,
+                            style_summary=stocklist_styles
+                        )
+
+                        stocklist_buffer_csv = StringIO()
+                        styles_buffer_csv = StringIO()
+
+                        build_csv_from_list(stocklist, stocklist_buffer_csv)
+                        build_csv_from_list(stocklist_styles, styles_buffer_csv)
+
+                        del stocklist_styles
+
                         body = 'BeerBot found a list export in your email and generated a stock list and' \
                                ' summary of styles, attached below.'
+
                         attachments = [
-                            make_attachment(stocklist_buffer, 'bb-stocklist.csv', 'text/csv'),
-                            make_attachment(styles_buffer, 'bb-stocklist-summary.csv', 'text/csv'),
+                            make_attachment(stocklist_buffer_csv, 'bb-stocklist.csv', 'text/csv'),
+                            make_attachment(styles_buffer_csv, 'bb-stocklist-summary.csv', 'text/csv'),
                         ]
-                        uploaded_to = upload_report_to_s3(stocklist_buffer, 'bb-stocklist.csv', reply_to)
+
+                        del stocklist_buffer_csv
+                        del styles_buffer_csv
+
+                        stocklist_buffer_html = StringIO()
+                        stock_check.build_html_from_list(stocklist, stocklist_buffer_html)
+
+                        uploaded_to = upload_report_to_s3(stocklist_buffer_html, 'bb-stocklist.html', reply_to)
                         if uploaded_to:
                             body += '\nSummary was uploaded to %s' % uploaded_to
                         send_email_response(reply_to, body, attachments)
+
+                        stocklist_buffer_html = StringIO()
 
                     elif export_type == EXPORT_TYPE_CHECKINS:
                         weekly_buffer = StringIO()
@@ -85,7 +107,8 @@ def lambda_handler(event, context):
                             styles_output=styles_buffer,
                             brewery_output=breweries_buffer
                         )
-                        body = 'BeerBot found a check-in export in your email and created the following summaries:\n\n' \
+                        body = 'BeerBot found a check-in export in your email and' \
+                               ' created the following summaries:\n\n' \
                                ' checkin-summary: summarises consumption and score by week\n' \
                                ' checkin-styles: styles you\'ve checked in, most common first\n' \
                                ' checkin-breweries: average score by brewery of all checkins & unique beers \n\n' \
@@ -98,13 +121,7 @@ def lambda_handler(event, context):
                             make_attachment(breweries_buffer, 'bb-checkin-breweries.csv', 'text/csv'),
                         ]
 
-                        uploaded_to = upload_report_to_s3(weekly_buffer, 'bb-checkin-summary.csv', reply_to)
-                        if uploaded_to:
-                            body += '\nSummary was uploaded to %s' % uploaded_to
-
                         send_email_response(reply_to, body, attachments)
-
-
 
                 else:
                     exception_message = 'Unfamiliar export type: "%s"' % export_type

@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
 import argparse
-import csv
 import sys
 import json
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from typing import TextIO
-from utils import file_contents
+from typing import TextIO, List
+from utils import file_contents, build_csv_from_list
 
 
 def generate_stocklist_files(source_data: list, stocklist_output: TextIO = None, styles_output: TextIO = None) -> None:
@@ -25,14 +24,10 @@ def generate_stocklist_files(source_data: list, stocklist_output: TextIO = None,
     build_stocklists(source_data, stocklist=stocklist, style_summary=style_summary)
 
     if stocklist_output:
-        writer = csv.writer(stocklist_output)
-        for row in stocklist:
-            writer.writerow(row)
+        build_csv_from_list(stocklist, stocklist_output)
 
     if styles_output:
-        writer = csv.writer(styles_output)
-        for row in style_summary:
-            writer.writerow(row)
+        build_csv_from_list(style_summary, styles_output)
 
 
 def build_stocklists(source_data: list, stocklist: list = None, style_summary: list = None) -> None:
@@ -157,10 +152,61 @@ def parse_cli_args() -> argparse.Namespace:
         usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--summary] [--help]'
     )
     parser.add_argument('source', help='Path to source file (export.json)')
-    parser.add_argument('--summary', help='Generate a summary of styles rather than a full list', action='store_true')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--html', help='Export stocklist as html instead of csv', action='store_true')
+    group.add_argument('--summary', help='Generate a summary of styles rather than a full list', action='store_true')
     parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
     args = parser.parse_args()
     return args
+
+
+def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
+    def wrap(contents: str, tag: str):
+        return '<%s>%s</%s>' % (tag, contents, tag)
+
+    today = date.today().strftime('%B %-d %Y')
+
+    stocklist_output.write(
+        """<html><head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+        <title>Stocklist</title>
+        <style type="text/css" media="all">
+            body { padding: 20px 40px; font-family: "Helvetica Neue", "Helvetica", sans-serif; }
+            table { border-collapse: collapse; border: 1px solid #ddd; }
+            th { background-color: #eee; text-align: left; padding: 6px }
+            tr:first-child th {background-color: #ddd;}
+            td { text-align: left; padding: 2 6px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;  }
+            h1 { text-align: right; padding-right: 40px; font-size: 1.2em; margin-top: 0}
+        </style>
+        </head>
+        <body>
+            <table>
+            <h1>Stocklist generated %s</h1>
+            """ % today
+    )
+
+    first = True
+    for row in stocklist:
+        if not len(''.join(row)):
+            continue
+
+        if len(row) == 1:
+            row_string = '<tr><th colspan="9">%s</th></tr>\n' % row[0]
+        elif first:
+            row_string = ''.join(map(lambda x: wrap(x, 'th'), row))
+            row_string = wrap(row_string, 'tr') + '\n'
+        else:
+            row_string = wrap(row[0], 'th')
+            row_string += ''.join(map(lambda x: wrap(x, 'td'), row[1:]))
+            row_string = wrap(row_string, 'tr') + '\n'
+
+        stocklist_output.write(row_string)
+
+        first = False
+
+    stocklist_output.write("""</table>
+                </body>
+            </html>""")
 
 
 def run_cli():
@@ -178,6 +224,10 @@ def run_cli():
 
     if args.summary:
         generate_stocklist_files(source_data, styles_output=output_handle)
+    elif args.html:
+        stocklist = []
+        build_stocklists(source_data, stocklist=stocklist)
+        build_html_from_list(stocklist, stocklist_output=output_handle)
     else:
         generate_stocklist_files(source_data, stocklist_output=output_handle)
 
