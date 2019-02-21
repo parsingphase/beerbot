@@ -32,6 +32,7 @@ This is the slightly more powerful, but less convenient option.
 ### Forward by email
 Untappd delivers your exports as an email containing a download link.
 For maximum convenience you can just forward these emails to a robotic email address and it'll reply with the results. 
+Reports will be attached as CSVs, and your latest list exports will also be stored online at a secret, persistent bookmarkable link.
 At the moment, this service is in Beta so I'm not making this address globally available. 
 However, if you'd like to use it just email me at [richard@phase.org](mailto:richard@phase.org?subject=Beerbot Access Request). 
 It doesn't matter if you don't know me, this is only about controlling numbers while I check functionality and running costs.
