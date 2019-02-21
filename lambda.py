@@ -155,7 +155,8 @@ def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str) ->
         bucket.put_object(
             Body=buffer.getvalue(),
             Key=destination,
-            GrantRead='uri="http://acs.amazonaws.com/groups/global/AllUsers"'
+            GrantRead='uri="http://acs.amazonaws.com/groups/global/AllUsers"',
+            ContentType='text/html'
         )
 
     return get_config('upload_web_root') + destination
