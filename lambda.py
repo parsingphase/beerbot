@@ -92,7 +92,10 @@ def lambda_handler(event, context):
 
                         uploaded_to = upload_report_to_s3(stocklist_buffer_html, 'sl', reply_to)
                         if uploaded_to:
-                            body += '\nSummary was uploaded to %s' % uploaded_to
+                            body += '\n\nYour list was also uploaded to a private location at %s' % uploaded_to
+                            body += '\n\nThis location will remain constant for all future submissions from your email '
+                            body += 'address, so feel free to bookmark it.'
+
                         send_email_response(reply_to, body, attachments)
 
                         stocklist_buffer_html = StringIO()
