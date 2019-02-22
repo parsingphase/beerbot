@@ -110,6 +110,7 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
                     drinks = expiry_sets[k][style]
                     drinks.sort(key=lambda d: (d['brewery_name'], d['beer_name']))
                     for item in drinks:
+                        bbd = item.get('best_by_date_iso', '')
                         stocklist.append(
                             [
                                 '',
@@ -120,7 +121,7 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
                                 item['beer_type'],
                                 '%.1f%%' % float(item['beer_abv']),
                                 item.get('container', ''),
-                                item.get('best_by_date_iso', ''),
+                                bbd if bbd != '0000-00-00' else '',
                             ]
                         )
                         first = False
@@ -172,7 +173,7 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
         <title>Stocklist</title>
         <style type="text/css" media="all">
             body { padding: 20px 40px; font-family: "Helvetica Neue", "Helvetica", sans-serif; }
-            table { border-collapse: collapse; border: 1px solid #ddd; }
+            table { border-collapse: collapse; border: 1px solid #ddd; min-width: 90em}
             th { background-color: #eee; text-align: left; padding: 6px }
             tr:first-child th {background-color: #ddd;}
             td { text-align: left; padding: 2 6px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;  }
