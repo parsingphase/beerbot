@@ -3,6 +3,11 @@ import csv
 import re
 import requests
 
+try:
+    from config import config
+except ImportError:
+    config = {}
+
 
 def file_contents(file_path: str, verbose: bool = False) -> Optional[str]:
     """
@@ -60,3 +65,17 @@ def build_csv_from_list(stocklist: list, stocklist_output: TextIO):
     writer = csv.writer(stocklist_output)
     for row in stocklist:
         writer.writerow(row)
+
+
+def get_config(key: str, default=None):
+    """
+    Get the specifed config key if available
+
+    Args:
+        key:
+        default:
+
+    Returns:
+
+    """
+    return config.get(key, default)

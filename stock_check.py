@@ -3,7 +3,7 @@
 import argparse
 import sys
 import json
-from datetime import date
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from typing import TextIO, List
 from utils import file_contents, build_csv_from_list
@@ -165,24 +165,28 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
     def wrap(contents: str, tag: str):
         return '<%s>%s</%s>' % (tag, contents, tag)
 
-    today = date.today().strftime('%B %-d %Y')
+    date_format = '%B %-d %Y'
+    # date_format += ' %X'
+    today = datetime.now().strftime(date_format)
 
     stocklist_output.write(
         """<html><head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
         <title>Stocklist</title>
         <style type="text/css" media="all">
-            body { padding: 20px 40px; font-family: "Helvetica Neue", "Helvetica", sans-serif; }
+            body { font-family: "Helvetica Neue", "Helvetica", sans-serif; }
+            div.container { padding: 20px 40px; }
+            h1 { text-align: right; padding-right: 40px; font-size: 1.2em; margin-top: 0}
             table { border-collapse: collapse; border: 1px solid #ddd; min-width: 90em}
             th { background-color: #eee; text-align: left; padding: 6px }
             tr:first-child th {background-color: #ddd;}
-            td { text-align: left; padding: 2 6px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd;  }
-            h1 { text-align: right; padding-right: 40px; font-size: 1.2em; margin-top: 0}
+            td { text-align: left; padding: 2 6px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
         </style>
         </head>
         <body>
-            <table>
+            <div class="container">
             <h1>Stocklist generated %s</h1>
+            <table>
             """ % today
     )
 
@@ -205,9 +209,10 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
 
         first = False
 
-    stocklist_output.write("""</table>
-                </body>
-            </html>""")
+    stocklist_output.write("""</table> &nbsp;
+                </div>
+            </body>
+        </html>""")
 
 
 def run_cli():

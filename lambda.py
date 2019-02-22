@@ -16,15 +16,8 @@ from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from hashlib import sha256
 from io import StringIO
-from typing import Optional, List, TextIO
-from utils import build_csv_from_list
-
-try:
-    from config import config
-except ImportError:
-    config = {}
-
-S3_BUCKET = 'org.phase.beerbot.mail.incoming'
+from typing import Optional, List
+from utils import build_csv_from_list, get_config
 
 EXPORT_TYPE_LIST = 'list'
 EXPORT_TYPE_CHECKINS = 'checkins'
@@ -135,6 +128,8 @@ def lambda_handler(event, context):
                 error_message = 'BeerBot had a problem handling your message:\n\n' \
                                 ' Here\'s a hint to the problem: %s %s' % (type(e), e)
                 send_email_response(reply_to, error_message)
+                if get_config('debug'):
+                    raise e
 
 
 def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str) -> str:
@@ -150,19 +145,27 @@ def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str) ->
     """
     destination = None
 
-    if 'upload_bucket' in config and 'secret' in config:
+    secret = get_config('secret')
+    upload_bucket = get_config('upload_bucket')
+    upload_web_root = get_config('upload_web_root')
+
+    if secret and upload_bucket and upload_web_root:
         s3_resource = boto3.resource('s3')
-        bucket = s3_resource.Bucket(config['upload_bucket'])
-        path = sha256((config['secret'] + '/' + source_address.lower()).encode('utf8')).hexdigest()[0:20]
-        destination = path + '/' + filename
+        bucket = s3_resource.Bucket(upload_bucket)
+        path = sha256((get_config('secret') + '/' + source_address.lower()).encode('utf8')).hexdigest()[0:20]
+        relative_path = path + '/' + filename
         bucket.put_object(
             Body=buffer.getvalue(),
-            Key=destination,
+            Key=relative_path,
             GrantRead='uri="http://acs.amazonaws.com/groups/global/AllUsers"',
             ContentType='text/html'
         )
+        invalidate_path_cache('/' + relative_path)
+        destination = upload_web_root + relative_path
+    else:
+        print('No upload dest specified, so no HTML storage')
 
-    return get_config('upload_web_root') + destination
+    return destination
 
 
 def fetch_message_from_bucket(message_id: str) -> Message:
@@ -174,8 +177,12 @@ def fetch_message_from_bucket(message_id: str) -> Message:
     Returns:
 
     """
+    source_bucket = get_config('incoming_email_bucket')
+    if not source_bucket:
+        raise Exception('config { "incoming_email_bucket" } must be specified')
+
     client = boto3.client("s3")
-    result = client.get_object(Bucket=S3_BUCKET, Key=message_id)
+    result = client.get_object(Bucket=source_bucket, Key=message_id)
     # Read the object (not compressed):
     text = result["Body"].read().decode()
     parser = EmailParser()
@@ -306,5 +313,28 @@ def make_attachment(file_data: StringIO, filename: str = None, mime_type: str = 
     return part
 
 
-def get_config(key, default=None):
-    return config.get(key, default)
+def invalidate_path_cache(path: str):
+    """
+    Create a CDN invalidation for the specified path
+
+    Args:
+        path: distribution-relative path to the file to be invalidated
+
+    Returns:
+
+    """
+    cdn_id = get_config('cdn_distribution_id')
+    if cdn_id:
+        if get_config('debug'):
+            print('Invalidate "%s" in "%s"' % (path, cdn_id))
+        client = boto3.client('cloudfront')
+        client.create_invalidation(
+            DistributionId=cdn_id,
+            InvalidationBatch={
+                'Paths': {
+                    'Quantity': 1,
+                    'Items': [path]
+                },
+                'CallerReference': 'beerbot_upload'
+            }
+        )

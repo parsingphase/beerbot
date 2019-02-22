@@ -1,0 +1,9 @@
+config = {
+    'debug': False, # Some extra output to AWS console if this is true
+    'incoming_email_bucket': 'S3_BUCKET_NAME', # Bucket to which SES saves incoming emails - required
+    # Following vars needed only if saving HTML versions online
+    'upload_bucket': 'S3_BUCKET_NAME', # S3 bucket configured to serve website (directly or via CDN)
+    'secret': 'RANDOM_STRING', # Use in generating per-user hashes for URLs
+    'upload_web_root': 'HTML_UPLOAD_ROOT_URL', # Root URL of HTML storage, with protocol
+    'cdn_distribution_id': 'CDN_DISTRIBUTION_ID', # ID of the cloudfront distribution, if any
+}
