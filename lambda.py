@@ -8,6 +8,7 @@ import stock_check
 
 from botocore.exceptions import ClientError
 from bot_version import version
+from datetime import datetime
 from email import encoders
 from email.parser import Parser as EmailParser
 from email.message import Message
@@ -325,16 +326,18 @@ def invalidate_path_cache(path: str):
     """
     cdn_id = get_config('cdn_distribution_id')
     if cdn_id:
-        if get_config('debug'):
-            print('Invalidate "%s" in "%s"' % (path, cdn_id))
+        print('Invalidate "%s" in "%s"' % (path, cdn_id))
         client = boto3.client('cloudfront')
-        client.create_invalidation(
+        reference = datetime.now().strftime('%Y%m%d%H%M%S')
+        invalidation = client.create_invalidation(
             DistributionId=cdn_id,
             InvalidationBatch={
                 'Paths': {
                     'Quantity': 1,
                     'Items': [path]
                 },
-                'CallerReference': 'beerbot_upload'
+                'CallerReference': 'beerbot_upload_' + reference
             }
         )
+        print(invalidation)
+        print('end invalidation')
