@@ -71,14 +71,14 @@ Or grab a release from the [releases page](https://github.com/parsingphase/untap
 
 Once you've got the code, change into its directory, then set it up. You've got two choices here:
 
-### Install manually
+#### 1) Install manually
 
  - Ensure you have python3 and pipenv installed, then run `pipenv install` (you only need to do this once).
  - Then load the environment with `pipenv shell`
  - You can now run the scripts as documented above:
    - `./stock_check.py --help` or `./imbibed.py --help`  
    
-### Use the `init.sh` helper script
+#### 2) Use the `init.sh` helper script
 
 This will check your system, provide advice, fetch dependencies and load the environment:
 
@@ -86,13 +86,21 @@ This will check your system, provide advice, fetch dependencies and load the env
  - You can now run the scripts as documented above:
    - `./stock_check.py --help` or `./imbibed.py --help`      
     
-### Package & update Lambda:
+## Package & update Lambda:
 
-    ./build.sh --upload
-    
-You can also validate the python code:    
+**Advanced topic:**
+
+An AWS lambda script exists that can receive the Untappd export emails and parse them. 
+Setting up the required AWS services is out of scope for this document, but the build script for the lambda also
+validates all the source code of these tools.
+
+To validate the code:
 
     ./build.sh --validate
+    
+To upload a rebuilt lambda:    
+
+    ./build.sh --upload
     
 These arguments can be combined.    
     
