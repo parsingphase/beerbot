@@ -53,72 +53,10 @@ def lambda_handler(event, context):
                     loaded_data = json.loads(export_data)
 
                     if export_type == EXPORT_TYPE_LIST:
-                        stocklist = []
-                        stocklist_styles = []
-
-                        stock_check.build_stocklists(
-                            loaded_data,
-                            stocklist=stocklist,
-                            style_summary=stocklist_styles
-                        )
-
-                        stocklist_buffer_csv = StringIO()
-                        styles_buffer_csv = StringIO()
-
-                        build_csv_from_list(stocklist, stocklist_buffer_csv)
-                        build_csv_from_list(stocklist_styles, styles_buffer_csv)
-
-                        del stocklist_styles
-
-                        body = 'BeerBot found a list export in your email and generated a stock list and' \
-                               ' summary of styles, attached below.'
-
-                        attachments = [
-                            make_attachment(stocklist_buffer_csv, 'bb-stocklist.csv', 'text/csv'),
-                            make_attachment(styles_buffer_csv, 'bb-stocklist-summary.csv', 'text/csv'),
-                        ]
-
-                        del stocklist_buffer_csv
-                        del styles_buffer_csv
-
-                        stocklist_buffer_html = StringIO()
-                        stock_check.build_html_from_list(stocklist, stocklist_buffer_html)
-
-                        uploaded_to = upload_report_to_s3(stocklist_buffer_html, 'sl', reply_to)
-                        if uploaded_to:
-                            body += '\n\nYour list was also uploaded to a private location at %s' % uploaded_to
-                            body += '\nThis location will remain constant for all future submissions from your email '
-                            body += 'address, so feel free to bookmark it.'
-
-                        send_email_response(reply_to, body, attachments)
-
-                        stocklist_buffer_html = StringIO()
+                        process_list_export(loaded_data, reply_to)
 
                     elif export_type == EXPORT_TYPE_CHECKINS:
-                        weekly_buffer = StringIO()
-                        styles_buffer = StringIO()
-                        breweries_buffer = StringIO()
-                        imbibed.analyze_checkins(
-                            loaded_data,
-                            weekly_output=weekly_buffer,
-                            styles_output=styles_buffer,
-                            brewery_output=breweries_buffer
-                        )
-                        body = 'BeerBot found a check-in export in your email and' \
-                               ' created the following summaries:\n\n' \
-                               ' checkin-summary: summarises consumption and score by week\n' \
-                               ' checkin-styles: styles you\'ve checked in, most common first\n' \
-                               ' checkin-breweries: average score by brewery of all checkins & unique beers \n\n' \
-                               'Note on estimated consumption: \n' \
-                               '* = Some measures guessed from serving. \n' \
-                               '** = Some beers skipped due to no serving or measure\n\n'
-                        attachments = [
-                            make_attachment(weekly_buffer, 'bb-checkin-summary.csv', 'text/csv'),
-                            make_attachment(styles_buffer, 'bb-checkin-styles.csv', 'text/csv'),
-                            make_attachment(breweries_buffer, 'bb-checkin-breweries.csv', 'text/csv'),
-                        ]
-
-                        send_email_response(reply_to, body, attachments)
+                        process_checkins_export(loaded_data, reply_to)
 
                 else:
                     exception_message = 'Unfamiliar export type: "%s"' % export_type
@@ -131,6 +69,82 @@ def lambda_handler(event, context):
                 send_email_response(reply_to, error_message)
                 if get_config('debug'):
                     raise e
+
+
+def process_checkins_export(loaded_data: list, reply_to: str):
+    """
+    Process loaded checkin export data to create an email containing appropriate reports
+    Args:
+        loaded_data: Unpacked JSON data
+        reply_to: Address email was submitted from
+
+    Returns:
+
+    """
+    weekly_buffer = StringIO()
+    styles_buffer = StringIO()
+    breweries_buffer = StringIO()
+    imbibed.analyze_checkins(
+        loaded_data,
+        weekly_output=weekly_buffer,
+        styles_output=styles_buffer,
+        brewery_output=breweries_buffer
+    )
+    body = 'BeerBot found a check-in export in your email and' \
+           ' created the following summaries:\n\n' \
+           ' checkin-summary: summarises consumption and score by week\n' \
+           ' checkin-styles: styles you\'ve checked in, most common first\n' \
+           ' checkin-breweries: average score by brewery of all checkins & unique beers \n\n' \
+           'Note on estimated consumption: \n' \
+           '* = Some measures guessed from serving. \n' \
+           '** = Some beers skipped due to no serving or measure\n\n'
+    attachments = [
+        make_attachment(weekly_buffer, 'bb-checkin-summary.csv', 'text/csv'),
+        make_attachment(styles_buffer, 'bb-checkin-styles.csv', 'text/csv'),
+        make_attachment(breweries_buffer, 'bb-checkin-breweries.csv', 'text/csv'),
+    ]
+    send_email_response(reply_to, body, attachments)
+
+
+def process_list_export(loaded_data: list, reply_to: str):
+    """
+    Process loaded list export data to create an email containing appropriate reports, and an uploaded HTML version
+
+    Args:
+        loaded_data: Unpacked JSON data
+        reply_to: Address email was submitted from
+
+    Returns:
+
+    """
+    stocklist = []
+    stocklist_styles = []
+    stock_check.build_stocklists(
+        loaded_data,
+        stocklist=stocklist,
+        style_summary=stocklist_styles
+    )
+    stocklist_buffer_csv = StringIO()
+    styles_buffer_csv = StringIO()
+    build_csv_from_list(stocklist, stocklist_buffer_csv)
+    build_csv_from_list(stocklist_styles, styles_buffer_csv)
+    del stocklist_styles
+    body = 'BeerBot found a list export in your email and generated a stock list and' \
+           ' summary of styles, attached below.'
+    attachments = [
+        make_attachment(stocklist_buffer_csv, 'bb-stocklist.csv', 'text/csv'),
+        make_attachment(styles_buffer_csv, 'bb-stocklist-summary.csv', 'text/csv'),
+    ]
+    del stocklist_buffer_csv
+    del styles_buffer_csv
+    stocklist_buffer_html = StringIO()
+    stock_check.build_html_from_list(stocklist, stocklist_buffer_html)
+    uploaded_to = upload_report_to_s3(stocklist_buffer_html, 'sl', reply_to)
+    if uploaded_to:
+        body += '\n\nYour list was also uploaded to a private location at %s' % uploaded_to
+        body += '\nThis location will remain constant for all future submissions from your email '
+        body += 'address, so feel free to bookmark it.'
+    send_email_response(reply_to, body, attachments)
 
 
 def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str) -> str:
