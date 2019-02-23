@@ -84,22 +84,27 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
         stocklist.append(['Expiry', 'Type', '#', 'Brewery', 'Beverage', 'Subtype', 'ABV', 'Serving', 'BBE'])
         for k, expiry_set in enumerate(expiry_sets):
             if len(expiry_sets[k]):
+                distinct_beer_count = len(expiry_set)
                 if list_has_quantities:
+                    quantity = sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set])
                     stocklist.append(
                         [
-                            '%s: %d item(s) of %d beer(s)' % (
+                            '%s: %d %s of %d %s' % (
                                 thresholds[k]['description'],
-                                sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set]),
-                                len(expiry_set),
+                                quantity,
+                                plural('item', quantity),
+                                distinct_beer_count,
+                                plural('beer', distinct_beer_count),
                             )
                         ]
                     )
                 else:
                     stocklist.append(
                         [
-                            '%s: %d beer(s)' % (
+                            '%s: %d %s' % (
                                 thresholds[k]['description'],
-                                len(expiry_set),
+                                distinct_beer_count,
+                                plural('beer', distinct_beer_count),
                             )
                         ]
                     )
@@ -217,6 +222,19 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
                 </div>
             </body>
         </html>""")
+
+
+def plural(noun: str, quantity: int) -> str:
+    """
+    Naive plural: return noun suffixed by 's' if quantity is not 1
+    Args:
+        noun:
+        quantity:
+
+    Returns:
+        str
+    """
+    return noun + ('' if quantity == 1 else 's')
 
 
 def run_cli():
