@@ -40,9 +40,9 @@ def parse_measure(measure_string: str) -> int:
     }
     unit_match = '(?P<unit>' + '|'.join(units.keys()) + ')s?'  # allow plurals
     optional_unit_match = '(' + unit_match + ')?'
-    fraction_match = '(?P<fraction>\d+/\d+)'
-    quantity_match = '(?P<quantity>[\d\.]+)'
-    optional_space = '\s*'
+    fraction_match = r'(?P<fraction>\d+/\d+)'
+    quantity_match = r'(?P<quantity>[\d\.]+)'
+    optional_space = r'\s*'
     candidate_matches = [
         '^' + unit_match + '$',
         '^' + quantity_match + optional_space + optional_unit_match + '$',
@@ -115,8 +115,9 @@ def parse_cli_args():
         description='Analyse consumption of alcoholic drinks from an Untappd JSON export file',
         usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--weekly|--daily|--style|--brewery] [--help]',
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog='Filter is based on JSON input keys.\nExample usages:\n' +
-               '    "--filter=venue_name=The Red Lion"\n    "--filter=created_at>2017-10-01"'
+        epilog=('Filter is based on JSON input keys.\nExample usages:\n'
+                '    "--filter=venue_name=The Red Lion"\n    "--filter=created_at>2017-10-01"'
+                )
     )
     parser.add_argument('source', help='Path to source file (export.json)')
     parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')

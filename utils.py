@@ -39,28 +39,6 @@ def file_contents(file_path: str, verbose: bool = False) -> Optional[str]:
     return ''.join(contents)
 
 
-def fix_high_unicode(suspect_string: str) -> str:
-    """
-    Replace any remaining \u0123 sequences with correct UTF8 symbol
-
-    Args:
-        suspect_string: Potentially escaped string
-
-    Returns:
-        unescaped string
-
-    """
-
-    def uc(n):
-        fix = chr(int(n[1], 16))
-        print('Replace', n, 'with', fix)
-        return fix
-
-    print('fhu: check : ', suspect_string)
-
-    return re.sub(r'\\u([0-9a-f]{4})', uc, suspect_string)
-
-
 def build_csv_from_list(stocklist: list, stocklist_output: TextIO):
     writer = csv.writer(stocklist_output)
     for row in stocklist:
@@ -79,3 +57,8 @@ def get_config(key: str, default=None):
 
     """
     return config.get(key, default)
+
+
+def debug_print(message):
+    if get_config('debug'):
+        print(message)

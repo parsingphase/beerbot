@@ -18,7 +18,7 @@ from email.mime.application import MIMEApplication
 from hashlib import sha256
 from io import StringIO
 from typing import Optional, List
-from utils import build_csv_from_list, get_config
+from utils import build_csv_from_list, get_config, debug_print
 
 EXPORT_TYPE_LIST = 'list'
 EXPORT_TYPE_CHECKINS = 'checkins'
@@ -224,7 +224,7 @@ def detect_download_link(message_text: str) -> Optional[str]:
     Returns:
         url
     """
-    download_link_match = re.search('You can download your data export here: (https:\S+)', message_text)
+    download_link_match = re.search(r'You can download your data export here: (https:\S+)', message_text)
     download_link = download_link_match[1]
     return download_link
 
@@ -238,7 +238,7 @@ def detect_export_type(message_text: str) -> Optional[str]:
     Returns:
         EXPORT_TYPE_*
     """
-    export_match = re.search('you requested an export of ([-\w ]+) on Untappd', message_text)
+    export_match = re.search(r'you requested an export of ([-\w ]+) on Untappd', message_text)
     export_description = export_match[1]  # 'a list' or 'your check-ins'
     if export_description == 'a list':
         export_type = EXPORT_TYPE_LIST
@@ -340,7 +340,7 @@ def invalidate_path_cache(path: str):
     """
     cdn_id = get_config('cdn_distribution_id')
     if cdn_id:
-        print('Invalidate "%s" in "%s"' % (path, cdn_id))
+        debug_print('Invalidate "%s" in "%s"' % (path, cdn_id))
         client = boto3.client('cloudfront')
         reference = datetime.now().strftime('%Y%m%d%H%M%S')
         invalidation = client.create_invalidation(
@@ -353,5 +353,5 @@ def invalidate_path_cache(path: str):
                 'CallerReference': 'beerbot_upload_' + reference
             }
         )
-        print(invalidation)
-        print('end invalidation')
+        print({'invalidation': invalidation})
+        debug_print('end invalidation')
