@@ -176,6 +176,9 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
         <style type="text/css" media="all">
             body { font-family: "Helvetica Neue", "Helvetica", sans-serif; }
             div.container { padding: 20px 40px; }
+            @media only screen and (max-device-width : 1024px) {
+                div.container { padding: 4px; }
+            }
             h1 { text-align: right; padding-right: 40px; font-size: 1.2em; margin-top: 0}
             table { border-collapse: collapse; border: 1px solid #ddd; min-width: 85em}
             th { background-color: #eee; text-align: left; padding: 6px }
@@ -201,7 +204,7 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
             row_string = ''.join(map(lambda x: wrap(x, 'th'), row))
             row_string = wrap(row_string, 'tr') + '\n'
         else:
-            row[-1] = row[-1].replace('-', '\u2011') # Replace hyphens in best-before with non-breaking
+            row[-1] = row[-1].replace('-', '\u2011')  # Replace hyphens in best-before with non-breaking
             row_string = wrap(row[0], 'th')
             row_string += ''.join(map(lambda x: wrap(x, 'td'), row[1:]))
             row_string = wrap(row_string, 'tr') + '\n'
