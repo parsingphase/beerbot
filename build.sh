@@ -19,26 +19,30 @@ for arg in "$@"; do
 done
 
 get_script_dir () {
-     SOURCE="${BASH_SOURCE[0]}"
-     while [[ -h "$SOURCE" ]]; do
-          DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-          SOURCE="$( readlink "$SOURCE" )"
-          [[ ${SOURCE} != /* ]] && SOURCE="$DIR/$SOURCE"
-     done
-     $( cd -P "$( dirname "$SOURCE" )" )
-     pwd
+    SOURCE="${BASH_SOURCE[0]}"
+    SOURCE_DIR=$( dirname "$SOURCE" )
+    SOURCE_DIR=$(cd -P ${SOURCE_DIR} && pwd)
+    echo ${SOURCE_DIR}
 }
 
 SCRIPT_DIR="$( get_script_dir )"
+
 CACHE_DIR="${SCRIPT_DIR}/cache"
 BUILD_DIR="${SCRIPT_DIR}/build"
 TMP_DIR=$(mktemp -d)
 START_DIR=`pwd`
 
+cd ${SCRIPT_DIR}
+
 if [[ "${DO_VALIDATE}" == "1" ]]; then
+    if [[ ! -f "./venv/bin/flake8" ]]; then
+        echo "Validator missing, fetching"
+        pipenv install --dev
+    fi
+
     echo "Validating source code…"
     set +e
-    cd ${SCRIPT_DIR} && eval "./venv/bin/flake8 --ignore E501 ${SOURCE_FILES}"
+    eval "./venv/bin/flake8 --ignore E501 ${SOURCE_FILES}"
     VALIDATE_RESULT="$?"
     set -e
     if [[ "$VALIDATE_RESULT" == "0" ]]; then

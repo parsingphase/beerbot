@@ -61,16 +61,38 @@ End-user support cannot be provided.
 
 Python 3 is required (see [https://realpython.com/installing-python/](https://realpython.com/installing-python/))
 
-To install code & dependencies:
+Everything below runs in your terminal.
+
+Clone the repo with git (if you're familiar with that):
         
     git clone git@github.com:parsingphase/untappd-tools.git
-    pipenv install
     
-To run code, for example in a pipenv shell or a virtualenv:
-    
-    pipenv shell
-    ./stock_check.py data/input.json
+Or grab a release from the [releases page](https://github.com/parsingphase/untappd-tools/releases) and unpack it.
+
+Once you've got the code, change into its directory, then set it up. You've got two choices here:
+
+### Install manually
+
+ - Ensure you have python3 and pipenv installed, then run `pipenv install` (you only need to do this once).
+ - Then load the environment with `pipenv shell`
+ - You can now run the scripts as documented above:
+   - `./stock_check.py --help` or `./imbibed.py --help`  
+   
+### Use the `init.sh` helper script
+
+This will check your system, provide advice, fetch dependencies and load the environment:
+
+ - run `./init.sh`  
+ - You can now run the scripts as documented above:
+   - `./stock_check.py --help` or `./imbibed.py --help`      
     
 ### Package & update Lambda:
 
     ./build.sh --upload
+    
+You can also validate the python code:    
+
+    ./build.sh --validate
+    
+These arguments can be combined.    
+    
