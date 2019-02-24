@@ -8,7 +8,7 @@ import stock_check
 
 from botocore.exceptions import ClientError
 from bot_version import version
-from datetime import datetime
+from datetime import datetime, timedelta
 from email import encoders
 from email.parser import Parser as EmailParser
 from email.message import Message
@@ -139,7 +139,12 @@ def process_list_export(loaded_data: list, reply_to: str):
     del styles_buffer_csv
     stocklist_buffer_html = StringIO()
     stock_check.build_html_from_list(stocklist, stocklist_buffer_html)
-    uploaded_to = upload_report_to_s3(stocklist_buffer_html, 'sl', reply_to)
+    uploaded_to = upload_report_to_s3(
+        stocklist_buffer_html,
+        filename='sl',
+        source_address=reply_to,
+        expiry_days=get_config('upload_expiry_days')
+    )
     if uploaded_to:
         body += '\n\nYour list was also uploaded to a private location at %s' % uploaded_to
         body += '\nThis location will remain constant for all future submissions from your email '
@@ -147,13 +152,14 @@ def process_list_export(loaded_data: list, reply_to: str):
     send_email_response(reply_to, body, attachments)
 
 
-def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str) -> str:
+def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str, expiry_days: int = None) -> str:
     """
     Upload a file to the S3 bucket
     Args:
         buffer: StringIO buffer containing file data
         filename: Name of the file to save
         source_address: Email address of the file's submitter
+        expiry_days: Numbed of days in future for file expiry date, if any
 
     Returns:
         URL of uploaded file
@@ -169,14 +175,17 @@ def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str) ->
         bucket = s3_resource.Bucket(upload_bucket)
         path = sha256((get_config('secret') + '/' + source_address.lower()).encode('utf8')).hexdigest()[0:20]
         relative_path = path + '/' + filename
+        expires = (datetime.now() + timedelta(expiry_days)) if expiry_days is not None else None
         bucket.put_object(
             Body=buffer.getvalue(),
             Key=relative_path,
             GrantRead='uri="http://acs.amazonaws.com/groups/global/AllUsers"',
-            ContentType='text/html'
+            ContentType='text/html',
+            Expires=expires
         )
         invalidate_path_cache('/' + relative_path)
         destination = upload_web_root + relative_path
+        debug_print('Upload to %s, expiry %s' % (relative_path, expires))
     else:
         print('No upload dest specified, so no HTML storage')
 
