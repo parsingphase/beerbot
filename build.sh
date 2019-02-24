@@ -12,6 +12,8 @@ for arg in "$@"; do
             DO_UPLOAD=1;;
         "--validate")
             DO_VALIDATE=1;;
+        "--docs")
+            DO_BUILD_DOCS=1;;
         *)
             echo "Invalid argument ${arg}. Valid options are --validate, --upload"
             exit 1
@@ -31,6 +33,12 @@ CACHE_DIR="${SCRIPT_DIR}/cache"
 BUILD_DIR="${SCRIPT_DIR}/build"
 TMP_DIR=$(mktemp -d)
 START_DIR=`pwd`
+
+if [[ "${DO_BUILD_DOCS}" == "1" ]]; then
+    echo "Building docs…"
+    cd ${SCRIPT_DIR}/docs && bundle exec jekyll build
+    echo " … Docs built in ${SCRIPT_DIR}/docs/_site"
+fi
 
 cd ${SCRIPT_DIR}
 
@@ -89,7 +97,6 @@ rm -rf tests *.dist-info
 zip -r "${BUILD_DIR}/lambda.zip" * -x Pillow\* > /dev/null
 
 echo " Lambda file built at '${BUILD_DIR}/lambda.zip'"
-cd "${START_DIR}"
 
 echo " … Build complete"
 
@@ -100,4 +107,5 @@ if [[ "${DO_UPLOAD}" == "1" ]]; then
     echo " … Upload complete"
 fi
 
+cd "${START_DIR}"
 echo "All Done"
