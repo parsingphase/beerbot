@@ -181,7 +181,8 @@ def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str, ex
             Key=relative_path,
             GrantRead='uri="http://acs.amazonaws.com/groups/global/AllUsers"',
             ContentType='text/html',
-            Expires=expires
+            Expires=expires,
+            Tagging='ReportType=Stocklist',
         )
         invalidate_path_cache('/' + relative_path)
         destination = upload_web_root + relative_path
