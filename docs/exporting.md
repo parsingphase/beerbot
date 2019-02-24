@@ -37,9 +37,7 @@ for a message entitled "Your Export from Untappd".
 If you're running the code at home, click the link in the export email, download the file that's fetched in your browser, 
 and refer to [{{ site.github.project_title }}]({{ site.github.repository_url }}#readme).
 
-If you've [asked for access](INDEX.md#forward-by-email), just forward the whole, unmodified email to the address you've 
-been given. Beerbot will reply to the address you send from.  Please use the simpler forwarding option in your mail 
-client, don't "forward as attachment".
+If you'd like to use the tool online, please read the whole section entitled "Forward by email" on the [index page](index.md).
 
 # Further information
 

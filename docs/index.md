@@ -30,12 +30,26 @@ at [{{ site.github.project_title }}]({{ site.github.repository_url }}#readme).
 This is the slightly more powerful, but less convenient option.
 
 ### Forward by email
-Untappd delivers your exports as an email containing a download link.
-For maximum convenience you can just forward these emails to a robotic email address and it'll reply with the results. 
-Reports will be attached as CSVs, and your latest list exports will also be stored online at a secret, persistent bookmarkable link.
-At the moment, this service is in Beta so I'm not making this address globally available. 
-However, if you'd like to use it just email me at [richard@phase.org](mailto:richard@phase.org?subject=Beerbot Access Request). 
-It doesn't matter if you don't know me, this is only about controlling numbers while I check functionality and running costs.
+Beerbot can also be used entirely from your email client. Simply forward the emails that Untappd sends you when you 
+export your data to `beerbot@beerbot.phase.org` and it'll reply with the results. 
+Reports will be attached as CSVs, and your latest list export will also be stored privately online.
+
+#### ⚠️ Important
+
+ - Please read the section on "Getting your data" below to make sure you export your data in a way that Beerbot
+ understands.   
+ - Emails must be forwarded as-is, without modification, for Beerbot to handle them. Use simple forwarding rather than
+ any "forward as attachment" option.
+ - Your online lists are stored with no identifying data at a non-guessable URL and expire 30 days after you forward the email. 
+ Subsequent submissions will be stored at the same location, so just export & forward your data at least once a month 
+ to keep the list online permanently.
+ - As there is no information about which list you've chosen to export in Untappd's data, only your latest list submission 
+ can be stored online.
+ - If Beerbot doesn't reply, or it reports an error, please report the issue to [richard@phase.org](mailto:richard@phase.org?subject=Beerbot Issue). 
+ Note that I may ask you to forward your export email to resolve complex issues, but even if you're not happy sharing 
+ that data, all fault reports will be gratefully appreciated.
+ - This is a free, non-configurable service. If you're not happy sharing your data or having your list be reachable online
+ (albeit anonymously and at a non-indexed, non-guessable URL), please run the code at home rather than using the email forwarder.
 
 ### Getting your data
 
