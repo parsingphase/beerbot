@@ -3,6 +3,7 @@
 import argparse
 import sys
 import json
+from bot_version import version
 from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
 from typing import TextIO, List
@@ -167,6 +168,17 @@ def parse_cli_args() -> argparse.Namespace:
 
 
 def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
+    """
+    Create HTML table from Stocklist
+
+    Args:
+        stocklist: Summarised data
+        stocklist_output: Buffer for HTML output
+
+    Returns:
+
+    """
+
     def wrap(contents: str, tag: str):
         return '<%s>%s</%s>' % (tag, contents, tag)
 
@@ -189,13 +201,14 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
             th { background-color: #eee; text-align: left; padding: 6px }
             tr:first-child th {background-color: #ddd;}
             td { text-align: left; padding: 2 6px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
+            a { color: #000 }
         </style>
         </head>
         <body>
             <div class="container">
-            <h1>Stocklist generated %s</h1>
+            <h1>Stocklist generated %s by <a href="https://beerbot.phase.org">%s</a></h1>
             <table>
-            """ % today
+            """ % (today, 'Beerbot' if version == 'development' else version)
     )
 
     first = True
