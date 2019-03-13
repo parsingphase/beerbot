@@ -249,7 +249,7 @@ def detect_export_type(message_text: str) -> Optional[str]:
         EXPORT_TYPE_*
     """
     export_match = re.search(r'you requested an export of ([-\w ]+) on Untappd', message_text)
-    export_description = export_match[1]  # 'a list' or 'your check-ins'
+    export_description = export_match[1] if export_match is not None else ''  # 'a list' or 'your check-ins'
     if export_description == 'a list':
         export_type = EXPORT_TYPE_LIST
     elif export_description == 'your check-ins':
