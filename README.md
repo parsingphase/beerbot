@@ -1,4 +1,5 @@
 ## untappd-tools
+[![Build Status](https://travis-ci.org/parsingphase/untappd-tools.svg?branch=master)](https://travis-ci.org/parsingphase/untappd-tools)
 
 Tools for processing [Untappd Supporter](https://untappd.com/supporter) export data
 
