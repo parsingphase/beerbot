@@ -202,13 +202,14 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
             tr:first-child th {background-color: #ddd;}
             td { text-align: left; padding: 2 6px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
             a { color: #000 }
+            p.attribution { text-align: right; padding-right: 40px }
         </style>
         </head>
         <body>
             <div class="container">
-            <h1>Stocklist generated %s by <a href="https://beerbot.phase.org">%s</a></h1>
+            <h1>Stocklist generated %s by <a href="https://beerbot.phase.org">Beerbot</a></h1>
             <table>
-            """ % (today, 'Beerbot' if version == 'development' else version)
+            """ % today
     )
 
     first = True
@@ -232,9 +233,10 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
         first = False
 
     stocklist_output.write("""</table> &nbsp;
+    <p class="attribution">Built by %s</p>
                 </div>
             </body>
-        </html>""")
+        </html>""" % 'development version' if version == 'development' else version)
 
 
 def plural(noun: str, quantity: int) -> str:
