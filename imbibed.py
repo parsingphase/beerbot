@@ -406,7 +406,9 @@ def write_breweries_summary(breweries, brewery_output):
             breweries[brewery_name]['unique_average_score'] = ''
 
     brewery_list = list(breweries.values())
-    brewery_list.sort(key=lambda b: ((0 - b['unique_average_score']) if b['unique_average_score'] else 0, b['brewery']))
+    brewery_list.sort(
+        key=lambda b: ((0 - b['unique_average_score']) if b['unique_average_score'] else 0, b['brewery'])
+    )
     breweries_writer = csv.writer(brewery_output)
     brewery_keys = ['brewery', 'count', 'rated', 'average_score', 'unique_rated', 'unique_average_score']
     breweries_writer.writerow(brewery_keys)
