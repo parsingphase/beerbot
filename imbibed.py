@@ -143,7 +143,7 @@ def analyze_checkins(
         weekly_output: TextIO = None,
         styles_output: TextIO = None,
         brewery_output: TextIO = None,
-):
+) -> None:
     """
     Build a summary of intake from the exported data, and save to buffer
     Args:
@@ -156,12 +156,52 @@ def analyze_checkins(
     Returns:
 
     """
-    daily = {}
-    styles = {}
-    breweries = {}
+    daily = {} if daily_output else None
+    weekly = {} if weekly_output else None
+    styles = {} if styles_output else None
+    breweries = {} if brewery_output else None
 
+    build_checkin_summaries(source_data, daily, weekly, styles, breweries)
+
+    if weekly_output:
+        write_weekly_summary(weekly, weekly_output)
+
+    if daily_output:
+        write_daily_summary(daily, daily_output)
+
+    if styles_output:
+        write_styles_summary(styles, styles_output)
+
+    if brewery_output:
+        write_breweries_summary(breweries, brewery_output)
+
+
+def build_checkin_summaries(
+        source_data: list,
+        daily: dict = None,
+        weekly: dict = None,
+        styles: dict = None,
+        breweries: dict = None
+) -> None:
+    """
+    Build summaries to dictionaries as provided
+
+    Args:
+        source_data: Data unpacked from JSON source
+        daily: dict to populate with daily data
+        weekly: dict to populate with weekly data
+        styles: dict to populate with style data
+        breweries: dict to populate with brewery data
+
+    Returns:
+
+    """
     first_date = None
     last_date = None
+
+    # We need this to build with, even if we don't return it
+    if daily is None:
+        daily = {}
 
     for checkin in source_data:
         # fields of interest: comment, created_at, beer_abv, serving_type
@@ -206,7 +246,7 @@ def analyze_checkins(
             daily[date_key]['estimated'] = '**'
 
         # Gather styles if present
-        if checkin['beer_type']:
+        if styles is not None and checkin['beer_type']:
             style = checkin['beer_type'].split(' -')[0].strip()
             if style not in styles:
                 styles[style] = {'style': style, 'count': 0, 'rated': 0, 'total_score': 0}
@@ -217,7 +257,7 @@ def analyze_checkins(
                 styles[style]['total_score'] += float(checkin['rating_score'])
 
         # Gather breweries if present
-        if checkin.get('brewery_name', None):
+        if breweries is not None and checkin.get('brewery_name', None):
             brewery_name = checkin['brewery_name']
             if brewery_name not in breweries:
                 breweries[brewery_name] = {
@@ -239,9 +279,8 @@ def analyze_checkins(
                     breweries[brewery_name]['rated_beers'][beer_name] = []
                 breweries[brewery_name]['rated_beers'][beer_name].append(float(checkin['rating_score']))
 
-    if weekly_output:
+    if weekly is not None:
         # Gather weeks
-        weekly = {}
         for date_key in daily:
 
             # calculate week
@@ -302,17 +341,6 @@ def analyze_checkins(
                     'dry_days': 7,
                 }
             next_monday += timedelta(weeks=1)
-
-        write_weekly_summary(weekly, weekly_output)
-
-    if daily_output:
-        write_daily_summary(daily, daily_output)
-
-    if styles_output:
-        write_styles_summary(styles, styles_output)
-
-    if brewery_output:
-        write_breweries_summary(breweries, brewery_output)
 
 
 def write_weekly_summary(weekly, weekly_output):
@@ -407,7 +435,7 @@ def write_breweries_summary(breweries, brewery_output):
 
     brewery_list = list(breweries.values())
     brewery_list.sort(
-        key=lambda b: ((0 - b['unique_average_score']) if b['unique_average_score'] else 0, b['brewery'])
+        key=lambda br: ((0 - br['unique_average_score']) if br['unique_average_score'] else 0, br['brewery'])
     )
     breweries_writer = csv.writer(brewery_output)
     brewery_keys = ['brewery', 'count', 'rated', 'average_score', 'unique_rated', 'unique_average_score']
@@ -428,7 +456,6 @@ def run_cli():
     filter_strings = args.filter
     if filter_strings:
         source_data = filter_source_data(filter_strings, source_data)
-        # print(json.dumps(source_data, indent=True))
 
     if dest:
         output_handle = open(dest, 'w')
