@@ -82,11 +82,14 @@ def run_cli():
         for num, month in enumerate(months):
             month_start_date = date(year, num + 1, 1)
             (week_year, week, _) = month_start_date.isocalendar()
-            week = 1 if num == 0 and year != week_year else week  # If Jan 1 isn't in this isoyear, shift it to 1st week
+            week = 1 if num == 0 and year != week_year else week  # If Jan 1 not in this isoyear, shift it to 1st week
             image.add(
                 image.text(
                     month,
-                    insert=(GRID_BORDERS['left'] + GRID_PITCH * week, year_top + GRID_BORDERS['top'] - text_vrt_offset),
+                    insert=(
+                        GRID_BORDERS['left'] + GRID_PITCH * (week - 1),
+                        year_top + GRID_BORDERS['top'] - text_vrt_offset
+                    ),
                     fill=day_color
                 )
             )
