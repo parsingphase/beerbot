@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 
+from datetime import date
 from dateutil.parser import parse as parse_date
 from imbibed import build_checkin_summaries
 from svgwrite import Drawing
@@ -60,6 +61,8 @@ def run_cli():
 
     text_vrt_offset = 9
 
+    months = 'JFMAMJJASOND'
+
     for year in years:
         year_top = (height_per_year * (year - min_year))
         image.add(image.text('%d' % year, insert=(4, year_top + GRID_BORDERS['title_top'] + text_vrt_offset)))
@@ -75,12 +78,25 @@ def run_cli():
             )
         )
 
+        # Draw month initials in line with first day of month
+        for num, month in enumerate(months):
+            month_start_date = date(year, num + 1, 1)
+            (week_year, week, _) = month_start_date.isocalendar()
+            week = 1 if num == 0 and year != week_year else week  # If Jan 1 isn't in this isoyear, shift it to 1st week
+            image.add(
+                image.text(
+                    month,
+                    insert=(GRID_BORDERS['left'] + GRID_PITCH * week, year_top + GRID_BORDERS['top'] - text_vrt_offset),
+                    fill=day_color
+                )
+            )
+
     max_daily = max([daily_summary[d]['units'] for d in daily_summary])
 
     for date_string in daily_summary:
         units = daily_summary[date_string]['units']
-        date = parse_date(date_string)
-        (year, week, day) = date.isocalendar()
+        day_date = parse_date(date_string)
+        (year, week, day) = day_date.isocalendar()
         color = fractional_fill_color(units / max_daily) if units else '#eeeeee'
         offsets = (0, (year - min_year) * height_per_year)
         image.add(square_at(image, day, week, offsets=offsets, fill=color))
