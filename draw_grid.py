@@ -12,7 +12,7 @@ from utils import file_contents
 
 GRID_PITCH = 13
 GRID_SQUARE = 10
-GRID_BORDERS = {'top': 15, 'left': 40, 'bottom': 5, 'right': 5}
+GRID_BORDERS = {'top': 32, 'title_top': 12, 'left': 40, 'bottom': 5, 'right': 5}
 
 COLOR_LOW = (0xff, 0xff, 0xcc)
 COLOR_HIGH = (0x99, 0x22, 0x00)
@@ -25,9 +25,11 @@ def grid_size(rows: int, columns: int) -> Tuple[int, int]:
 
 
 # SVG puts 0,0 at top left
-def square_at(image: Drawing, row: int, column: int, fill='#ffdd00'):
-    left = GRID_BORDERS['left'] + (column - 1) * GRID_PITCH
-    top = GRID_BORDERS['top'] + (row - 1) * GRID_PITCH
+def square_at(image: Drawing, row: int, column: int, offsets=(), fill='#ffdd00'):
+    x_offset = offsets[0] if len(offsets) else 0
+    y_offset = offsets[1] if len(offsets) > 1 else 0
+    left = GRID_BORDERS['left'] + (column - 1) * GRID_PITCH + x_offset
+    top = GRID_BORDERS['top'] + (row - 1) * GRID_PITCH + y_offset
     return image.rect(insert=(left, top), size=(GRID_SQUARE, GRID_SQUARE), fill=fill)
 
 
@@ -49,8 +51,29 @@ def run_cli():
 
     daily_summary = {}
     build_checkin_summaries(source_data, daily_summary)
+    years = set([parse_date(d).year for d in daily_summary])
+    min_year = min(years)
+    num_years = 1 + max(years) - min_year
 
-    image = create_grid_image()
+    width, height_per_year = grid_size(7, 53)
+    image = create_blank_image(width, height_per_year * num_years)
+
+    text_vrt_offset = 9
+
+    for year in years:
+        year_top = (height_per_year * (year - min_year))
+        image.add(image.text('%d' % year, insert=(4, year_top + GRID_BORDERS['title_top'] + text_vrt_offset)))
+        day_color = '#777'
+        image.add(
+            image.text(
+                'Mo', insert=(14, year_top + GRID_BORDERS['top'] + text_vrt_offset), fill=day_color
+            )
+        )
+        image.add(
+            image.text(
+                'Su', insert=(14, year_top + GRID_BORDERS['top'] + text_vrt_offset + 6 * GRID_PITCH), fill=day_color
+            )
+        )
 
     max_daily = max([daily_summary[d]['units'] for d in daily_summary])
 
@@ -59,7 +82,8 @@ def run_cli():
         date = parse_date(date_string)
         (year, week, day) = date.isocalendar()
         color = fractional_fill_color(units / max_daily) if units else '#eeeeee'
-        image.add(square_at(image, day, week, fill=color))
+        offsets = (0, (year - min_year) * height_per_year)
+        image.add(square_at(image, day, week, offsets=offsets, fill=color))
 
     if dest:
         image.saveas(dest)
@@ -67,9 +91,15 @@ def run_cli():
         raise Exception('dest required')
 
 
-def create_grid_image() -> Drawing:
-    width, height = grid_size(7, 52)
+def create_grid_image(years=1) -> Drawing:
+    width, height = grid_size(7, 53)
+    height = height * years
     # print('%d by %d grid => %d x %d pixels' % (columns, rows, width, height))
+    image = create_blank_image(height, width)
+    return image
+
+
+def create_blank_image(width: int, height: int) -> Drawing:
     image = Drawing(size=('%dpx' % width, '%dpx' % height))
     image.add(image.rect((0, 0), (width, height), fill='white'))
     return image
