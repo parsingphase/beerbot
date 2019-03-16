@@ -15,6 +15,9 @@ and venues. Outputs are CSVs that you can format, analyse and print in any sprea
 ### Breweries analysis
 [<img src="images/bb-checkin-breweries.png" alt="Example summary">](images/bb-checkin-breweries.png) [Sample csv](files/checkin-breweries-sample.csv)
 
+### Daily visualisation
+[<img src="images/drinks.svg" alt="Example visualisation">](images/drinks.svg)
+
 ## Using Beerbot
 
 To use it, you'll need to be able to use Untappd's export tools, which means you'll need a paid 

@@ -265,6 +265,7 @@ def run_cli():
         output_handle = open(dest, 'w')
     else:
         output_handle = sys.stdout
+
     source_data = json.loads(file_contents(source))
 
     if args.summary:

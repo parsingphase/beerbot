@@ -2,7 +2,7 @@
 
 set -e
 
-SOURCE_FILES="lambda_function.py stock_check.py imbibed.py utils.py"
+SOURCE_FILES="lambda_function.py stock_check.py imbibed.py utils.py daily_visualisation.py"
 AWSREGION="eu-west-1"
 LAMBDA_NAME="receiveBeerBotMail"
 
@@ -92,7 +92,7 @@ echo  ${GIT_VERSION} > "${TMP_DIR}/bot_version.py"
 
 cd "${TMP_DIR}"
 echo " Fetching dependencies"
-pip install -t . requests > /dev/null 2>&1
+pip install -t . requests svgwrite > /dev/null 2>&1
 rm -rf tests *.dist-info
 zip -r "${BUILD_DIR}/lambda.zip" * -x Pillow\* > /dev/null
 
