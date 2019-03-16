@@ -13,7 +13,7 @@ from utils import file_contents
 
 GRID_PITCH = 13
 GRID_SQUARE = 10
-GRID_BORDERS = {'top': 32, 'title_top': 12, 'left': 40, 'bottom': 5, 'right': 5}
+GRID_BORDERS = {'top': 24, 'left': 52, 'bottom': 16, 'right': 5}
 
 COLOR_LOW = (0xff, 0xff, 0xcc)
 COLOR_HIGH = (0x99, 0x22, 0x00)
@@ -57,7 +57,7 @@ def run_cli():
     num_years = 1 + max(years) - min_year
 
     width, height_per_year = grid_size(7, 53)
-    image = create_blank_image(width, height_per_year * num_years)
+    image = init_image(width, height_per_year * num_years)
 
     text_vrt_offset = 9
 
@@ -65,16 +65,25 @@ def run_cli():
 
     for year in years:
         year_top = (height_per_year * (year - min_year))
-        image.add(image.text('%d' % year, insert=(4, year_top + GRID_BORDERS['title_top'] + text_vrt_offset)))
-        day_color = '#777'
         image.add(
             image.text(
-                'Mo', insert=(14, year_top + GRID_BORDERS['top'] + text_vrt_offset), fill=day_color
+                '%d' % year,
+                insert=(GRID_BORDERS['left'] - 46, year_top + GRID_BORDERS['top'] + text_vrt_offset - GRID_PITCH - 2),
+                class_='year'
             )
         )
         image.add(
             image.text(
-                'Su', insert=(14, year_top + GRID_BORDERS['top'] + text_vrt_offset + 6 * GRID_PITCH), fill=day_color
+                'Mo',
+                insert=(GRID_BORDERS['left'] - 24, year_top + GRID_BORDERS['top'] + text_vrt_offset),
+                class_='day'
+            )
+        )
+        image.add(
+            image.text(
+                'Su',
+                insert=(GRID_BORDERS['left'] - 24, year_top + GRID_BORDERS['top'] + text_vrt_offset + 6 * GRID_PITCH),
+                class_='day'
             )
         )
 
@@ -88,9 +97,9 @@ def run_cli():
                     month,
                     insert=(
                         GRID_BORDERS['left'] + GRID_PITCH * (week - 1),
-                        year_top + GRID_BORDERS['top'] - text_vrt_offset
+                        year_top + GRID_BORDERS['top'] + text_vrt_offset - GRID_PITCH - 2
                     ),
-                    fill=day_color
+                    class_='month'
                 )
             )
 
@@ -105,22 +114,20 @@ def run_cli():
         image.add(square_at(image, day, week, offsets=offsets, fill=color))
 
     if dest:
-        image.saveas(dest)
+        image.saveas(dest, pretty=True)
     else:
-        raise Exception('dest required')
+        image.write(sys.stdout, True)
 
 
-def create_grid_image(years=1) -> Drawing:
-    width, height = grid_size(7, 53)
-    height = height * years
-    # print('%d by %d grid => %d x %d pixels' % (columns, rows, width, height))
-    image = create_blank_image(height, width)
-    return image
-
-
-def create_blank_image(width: int, height: int) -> Drawing:
+def init_image(width: int, height: int) -> Drawing:
     image = Drawing(size=('%dpx' % width, '%dpx' % height))
     image.add(image.rect((0, 0), (width, height), fill='white'))
+    image.defs.add(
+        image.style(
+            '.year {font-weight: bold; font-size: 14px}\n'
+            'text { font-family: Verdana, Geneva, sans-serif; font-size: 12px; fill: #777}'
+        )
+    )
     return image
 
 
