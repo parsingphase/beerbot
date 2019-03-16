@@ -7,7 +7,7 @@ import sys
 from datetime import date
 from dateutil.parser import parse as parse_date
 from imbibed import build_checkin_summaries
-from math import ceil
+from math import ceil, floor
 from svgwrite import Drawing
 from typing import Tuple
 from utils import file_contents
@@ -71,7 +71,12 @@ def run_cli():
     daily_summary = {}
     build_checkin_summaries(source_data, daily_summary)
 
-    measure = 'drinks' if args.drinks else 'units'
+    if args.drinks:
+        measure = 'drinks'
+    elif args.average:
+        measure = 'average'
+    else:
+        measure = 'units'
 
     image = build_daily_visualisation_image(daily_summary, measure, show_legend)
 
@@ -130,26 +135,37 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
                     class_='month'
                 )
             )
-    max_daily = ceil(max([daily_summary[d][measure] for d in daily_summary]))
+    max_daily = ceil(max([daily_summary[d][measure] if measure in daily_summary[d] else 0 for d in daily_summary]))
+
+    if measure == 'average':
+        range_min = floor(min([daily_summary[d][measure] for d in daily_summary if measure in daily_summary[d]]))
+    else:
+        range_min = 0
 
     for date_string in daily_summary:
-        daily_quantity = daily_summary[date_string][measure]
+        daily_quantity = daily_summary[date_string][measure] if measure in daily_summary[date_string] else None
         day_date = parse_date(date_string)
         (year, week, day) = day_date.isocalendar()
-        color = fractional_fill_color(daily_quantity / max_daily) if daily_quantity else '#eeeeee'
+
+        if daily_quantity is None:
+            color = '#eeeeee'
+        else:
+            color = fractional_fill_color((daily_quantity - range_min) / (max_daily - range_min))
+
         offsets = (0, (year - min_year) * height_per_year)
         image.add(square_in_grid(image, day, week, offsets=offsets, fill=color))
 
     if show_legend:
         top = image_height - LEGEND_GRID['height']
-        draw_legend(image, measure, max_daily, top)
+
+        draw_legend(image, measure, top, max_daily, range_min)
 
     return image
 
 
-def draw_legend(image: Drawing, measure: str, max_value: float, top: int):
+def draw_legend(image: Drawing, measure: str, top: int, range_max: float, range_min: int = 0):
     # Generate up to 5 integer steps
-    step = int(ceil(max_value / 5))
+    step = int(ceil((range_max - range_min) / 5))
 
     image.add(
         image.text(
@@ -158,9 +174,9 @@ def draw_legend(image: Drawing, measure: str, max_value: float, top: int):
             class_='legend_title'
         )
     )
-    steps = list(range(0, int(max_value + 1), step))
-    if max(steps) != int(max_value):
-        steps.append(int(max_value))
+    steps = list(range(range_min, int(range_max + 1), step))
+    if max(steps) != int(range_max):
+        steps.append(int(range_max))
 
     for offset, marker in enumerate(steps):
         left = LEGEND_GRID['left'] + offset * LEGEND_GRID['pitch']
@@ -168,7 +184,7 @@ def draw_legend(image: Drawing, measure: str, max_value: float, top: int):
             image.rect(
                 (left, top),
                 (LEGEND_GRID['cell_width'], LEGEND_GRID['cell_height']),
-                fill=fractional_fill_color(marker / max_value)
+                fill=fractional_fill_color((marker - range_min) / (range_max - range_min))
             )
         )
         image.add(
@@ -176,7 +192,7 @@ def draw_legend(image: Drawing, measure: str, max_value: float, top: int):
                 marker,
                 insert=(left + LEGEND_GRID['cell_width'] / 2, top + 3 * LEGEND_GRID['cell_height'] / 4),
                 class_='key',
-                fill='#ffffff' if marker > max_value / 2 else '#000000'
+                fill='#ffffff' if marker > range_max / 2 else '#000000'
             )
         )
 
@@ -198,8 +214,9 @@ def parse_cli_args():
     parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
     parser.add_argument('--legend', required=False, help='Add a legend to image', action='store_true')
     group = parser.add_mutually_exclusive_group(required=False)
-    group.add_argument('--drinks', help='Show number of drinks', action='store_true')
     group.add_argument('--units', help='Show number of units (default)', action='store_true')
+    group.add_argument('--drinks', help='Show number of drinks', action='store_true')
+    group.add_argument('--average', help='Show average score)', action='store_true')
 
     args = parser.parse_args()
     return args

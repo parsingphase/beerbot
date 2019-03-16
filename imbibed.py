@@ -217,9 +217,6 @@ def build_checkin_summaries(
         if date_key not in daily:
             daily[date_key] = {
                 'drinks': 0,
-                'units': 0,
-                'alcohol_ml': 0,
-                'beverage_ml': 0,
                 'estimated': '',
                 'rated': 0,
                 'total_score': 0.0,
@@ -229,6 +226,7 @@ def build_checkin_summaries(
         if checkin['rating_score']:
             daily[date_key]['rated'] += 1
             daily[date_key]['total_score'] += float(checkin['rating_score'])
+            daily[date_key]['average'] = daily[date_key]['total_score'] / daily[date_key]['rated']
 
         measure = measure_from_comment(checkin['comment'])
         if measure is None:
@@ -236,6 +234,9 @@ def build_checkin_summaries(
             daily[date_key]['estimated'] = '*'
 
         if measure:
+            if 'beverage_ml' not in daily[date_key]:
+                daily[date_key]['beverage_ml'] = daily[date_key]['alcohol_ml'] = daily[date_key]['units'] = 0
+
             daily[date_key]['beverage_ml'] += measure
             if abv:
                 alcohol_volume = float(measure) * abv / 100
@@ -316,7 +317,7 @@ def build_checkin_summaries(
                     if len(daily[date_key][k]) > len(weekly[week_key][k]):
                         weekly[week_key][k] = daily[date_key][k]
 
-                else:
+                elif k in daily[date_key] and k in weekly[week_key]:
                     weekly[week_key][k] += daily[date_key][k]
 
         # Fill in blank weeks
@@ -378,7 +379,7 @@ def write_daily_summary(daily, daily_output):
 
         output_row = [date_key]
         for k in keys:
-            cell_value = day_row[k]
+            cell_value = day_row[k] if k in day_row else None
             if k not in ('estimated', 'average_score', 'total_score') and cell_value is not None:
                 cell_value = round(cell_value, 1)
             output_row.append(cell_value)
