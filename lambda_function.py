@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from email import encoders
 from email.parser import Parser as EmailParser
 from email.message import Message
+from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -113,17 +114,18 @@ def process_checkins_export(loaded_data: list, reply_to: str):
 
     body = 'BeerBot found a check-in export in your email and' \
            ' created the following summaries:\n\n' \
-           ' checkin-summary: summarises consumption and score by week\n' \
-           ' checkin-styles: styles you\'ve checked in, most common first\n' \
-           ' checkin-breweries: average score by brewery of all checkins & unique beers \n\n' \
-           'Note on estimated consumption: \n' \
+           ' bb-checkin-summary.csv: summarises consumption and score by week\n' \
+           ' bb-checkin-styles.csv: styles you\'ve checked in, most common first\n' \
+           ' bb-checkin-breweries.csv: average score by brewery of all checkins & unique beers \n\n' \
+           'plus a visualisation of your consumption over time in bb-units-vis.svg \n\n' \
+           'bb-checkin-summary.csv may contain notes on estimated consumption: \n' \
            '* = Some measures guessed from serving. \n' \
            '** = Some beers skipped due to no serving or measure\n\n'
     attachments = [
+        make_attachment(image_buffer, 'bb-units-vis.svg', 'image/svg+xml', disposition='inline'),
         make_attachment(weekly_buffer, 'bb-checkin-summary.csv', 'text/csv'),
         make_attachment(styles_buffer, 'bb-checkin-styles.csv', 'text/csv'),
         make_attachment(breweries_buffer, 'bb-checkin-breweries.csv', 'text/csv'),
-        make_attachment(image_buffer, 'bb-units-vis.svg', 'image/svg+xml', disposition='inline'),
     ]
     send_email_response(reply_to, body, attachments)
 
@@ -351,12 +353,24 @@ def make_attachment(file_data: StringIO, filename: str, mime_type: str, disposit
     Returns:
         MIMEApplication part
     """
-    part = MIMEApplication(file_data.getvalue(), mime_type.split('/')[1], _encoder=encoders.encode_noop)
-    # Very annoying error on AWS above:
-    # encode_base64 and encode_quopri both escape 3+byte unicode chars (above \u00ff) back to \u*** format
-    # So - as we're sending UTF8 CSVs only at the moment, we just send them unencoded
+    mime_parts = mime_type.split('/')
+    type = mime_parts[0]
+    subtype = mime_parts[1]
+
+    if type == 'text':
+        part = MIMEApplication(file_data.getvalue(), subtype, _encoder=encoders.encode_noop)
+        # Very annoying error on AWS above:
+        # encode_base64 and encode_quopri both escape 3+byte unicode chars (above \u00ff) back to \u*** format
+        # So - as we're sending UTF8 CSVs only at the moment, we just send them unencoded
+        # - and accept the 'alternative' application/csv mimetype
+    elif type == 'image':
+        part = MIMEImage(file_data.getvalue(), subtype)
+    else:
+        raise Exception('Unsupported mime supertype %s' % type)
 
     part.add_header('Content-Disposition', disposition, filename=filename)
+    part.add_header('Content-ID', '<%s>' % filename)
+
     return part
 
 
