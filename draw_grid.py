@@ -7,6 +7,7 @@ import sys
 from datetime import date
 from dateutil.parser import parse as parse_date
 from imbibed import build_checkin_summaries
+from math import ceil
 from svgwrite import Drawing
 from typing import Tuple
 from utils import file_contents
@@ -14,9 +15,15 @@ from utils import file_contents
 GRID_PITCH = 13
 GRID_SQUARE = 10
 GRID_BORDERS = {'top': 24, 'left': 52, 'bottom': 16, 'right': 5}
+LEGEND_GRID = {'height': 50, 'left': 400, 'pitch': 32, 'cell_height': 22, 'cell_width': 28}
 
 COLOR_LOW = (0xff, 0xff, 0xcc)
 COLOR_HIGH = (0x99, 0x22, 0x00)
+
+CSS = '.year {font-weight: bold; font-size: 14px}\n' \
+      'text { font-family: Verdana, Geneva, sans-serif;}\n' \
+      'text.year, text.month, text.day {  font-size: 12px; fill: #777}\n' \
+      'text.key {font-weight: bold; font-size: 14px; text-anchor: middle }'
 
 
 def grid_size(rows: int, columns: int) -> Tuple[int, int]:
@@ -56,6 +63,7 @@ def run_cli():
     args = parse_cli_args()
     source = args.source
     dest = args.output
+    show_drinks = args.drinks
     source_data = json.loads(file_contents(source))
 
     daily_summary = {}
@@ -65,7 +73,9 @@ def run_cli():
     num_years = 1 + max(years) - min_year
 
     width, height_per_year = grid_size(7, 53)
-    image = init_image(width, height_per_year * num_years)
+    draw_legend = args.legend
+    image_height = height_per_year * num_years + LEGEND_GRID['height'] if draw_legend else 0
+    image = init_image(width, image_height)
 
     text_vrt_offset = 9
 
@@ -111,9 +121,11 @@ def run_cli():
                 )
             )
 
-    measure = 'drinks' if args.drinks else 'units'
+    measure = 'drinks' if show_drinks else 'units'
 
-    max_daily = max([daily_summary[d][measure] for d in daily_summary])
+    max_daily = ceil(max([daily_summary[d][measure] for d in daily_summary]))
+
+    print('max_daily is %d' % max_daily)
 
     for date_string in daily_summary:
         daily_quantity = daily_summary[date_string][measure]
@@ -122,6 +134,29 @@ def run_cli():
         color = fractional_fill_color(daily_quantity / max_daily) if daily_quantity else '#eeeeee'
         offsets = (0, (year - min_year) * height_per_year)
         image.add(square_in_grid(image, day, week, offsets=offsets, fill=color))
+
+    if draw_legend:
+        # Generate up to 5 integer steps
+        step = int(ceil(max_daily / 5))
+        print('step is %d' % step)
+        for offset, marker in enumerate(range(0, max_daily + 1, step)):
+            left = LEGEND_GRID['left'] + offset * LEGEND_GRID['pitch']
+            top = image_height - LEGEND_GRID['height']
+            image.add(
+                image.rect(
+                    (left, top),
+                    (LEGEND_GRID['cell_width'], LEGEND_GRID['cell_height']),
+                    fill=fractional_fill_color(marker / max_daily)
+                )
+            )
+            image.add(
+                image.text(
+                    marker,
+                    insert=(left + LEGEND_GRID['cell_width'] / 2, top + 3 * LEGEND_GRID['cell_height'] / 4),
+                    class_='key',
+                    fill='#ffffff' if marker > max_daily / 2 else '#000000'
+                )
+            )
 
     if dest:
         image.saveas(dest, pretty=True)
@@ -132,23 +167,19 @@ def run_cli():
 def init_image(width: int, height: int) -> Drawing:
     image = Drawing(size=('%dpx' % width, '%dpx' % height))
     image.add(image.rect((0, 0), (width, height), fill='white'))
-    image.defs.add(
-        image.style(
-            '.year {font-weight: bold; font-size: 14px}\n'
-            'text { font-family: Verdana, Geneva, sans-serif; font-size: 12px; fill: #777}'
-        )
-    )
+    image.defs.add(image.style(CSS))
     return image
 
 
 def parse_cli_args():
     parser = argparse.ArgumentParser(
         description='Visualise consumption of alcoholic drinks from an Untappd JSON export file',
-        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--drinks|--units]',
+        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--drinks|--units] [--legend]',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('source', help='Path to source file (export.json)')
     parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
+    parser.add_argument('--legend', required=False, help='Add a legend to image', action='store_true')
     group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument('--drinks', help='Show number of drinks', action='store_true')
     group.add_argument('--units', help='Show number of units (default)', action='store_true')
