@@ -21,10 +21,10 @@ COLOR_LOW = (0xff, 0xff, 0xcc)
 COLOR_HIGH = (0x99, 0x22, 0x00)
 
 CSS = """
-    year {font-weight: bold; font-size: 14px}
+    year { font-weight: bold; font-size: 14px }
     text { font-family: Verdana, Geneva, sans-serif; }
-    text.year, text.month, text.day, text.legend_title { font-size: 12px; fill: #777}
-    text.key {font-weight: bold; font-size: 14px; text-anchor: middle }
+    text.year, text.month, text.day, text.legend_title { font-size: 12px; fill: #777 }
+    text.key { font-weight: bold; font-size: 14px; text-anchor: middle }
     text.legend_title {font-weight: bold; font-size: 14px; text-anchor: end }
 """
 
@@ -86,10 +86,11 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
     min_year = min(years)
     num_years = 1 + max(years) - min_year
     width, height_per_year = grid_size(7, 53)
-    image_height = height_per_year * num_years + LEGEND_GRID['height'] if show_legend else 0
+    image_height = height_per_year * num_years + (LEGEND_GRID['height'] if show_legend else 0)
     image = init_image(width, image_height)
     text_vrt_offset = 9
     months = 'JFMAMJJASOND'
+
     for year in years:
         year_top = (height_per_year * (year - min_year))
         image.add(
@@ -138,9 +139,11 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
         color = fractional_fill_color(daily_quantity / max_daily) if daily_quantity else '#eeeeee'
         offsets = (0, (year - min_year) * height_per_year)
         image.add(square_in_grid(image, day, week, offsets=offsets, fill=color))
+
     if show_legend:
         top = image_height - LEGEND_GRID['height']
         draw_legend(image, measure, max_daily, top)
+
     return image
 
 
