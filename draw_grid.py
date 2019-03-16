@@ -26,7 +26,7 @@ def grid_size(rows: int, columns: int) -> Tuple[int, int]:
 
 
 # SVG puts 0,0 at top left
-def square_at(image: Drawing, row: int, column: int, offsets=(), fill='#ffdd00'):
+def square_in_grid(image: Drawing, row: int, column: int, offsets=(), fill='#ffdd00'):
     x_offset = offsets[0] if len(offsets) else 0
     y_offset = offsets[1] if len(offsets) > 1 else 0
     left = GRID_BORDERS['left'] + (column - 1) * GRID_PITCH + x_offset
@@ -35,6 +35,14 @@ def square_at(image: Drawing, row: int, column: int, offsets=(), fill='#ffdd00')
 
 
 def fractional_fill_color(fraction: float) -> str:
+    """
+    Get a hex-triple color between our two configured limits
+    Args:
+        fraction: 0-1 value of position between limits
+
+    Returns:
+
+    """
     color = []
     for k in range(0, 3):
         color.append(COLOR_LOW[k] + int(fraction * (COLOR_HIGH[k] - COLOR_LOW[k])))
@@ -103,15 +111,17 @@ def run_cli():
                 )
             )
 
-    max_daily = max([daily_summary[d]['units'] for d in daily_summary])
+    measure = 'drinks' if args.drinks else 'units'
+
+    max_daily = max([daily_summary[d][measure] for d in daily_summary])
 
     for date_string in daily_summary:
-        units = daily_summary[date_string]['units']
+        daily_quantity = daily_summary[date_string][measure]
         day_date = parse_date(date_string)
         (year, week, day) = day_date.isocalendar()
-        color = fractional_fill_color(units / max_daily) if units else '#eeeeee'
+        color = fractional_fill_color(daily_quantity / max_daily) if daily_quantity else '#eeeeee'
         offsets = (0, (year - min_year) * height_per_year)
-        image.add(square_at(image, day, week, offsets=offsets, fill=color))
+        image.add(square_in_grid(image, day, week, offsets=offsets, fill=color))
 
     if dest:
         image.saveas(dest, pretty=True)
@@ -134,11 +144,14 @@ def init_image(width: int, height: int) -> Drawing:
 def parse_cli_args():
     parser = argparse.ArgumentParser(
         description='Visualise consumption of alcoholic drinks from an Untappd JSON export file',
-        usage=sys.argv[0] + ' SOURCE [--output OUTPUT]',
+        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--drinks|--units]',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('source', help='Path to source file (export.json)')
     parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument('--drinks', help='Show number of drinks', action='store_true')
+    group.add_argument('--units', help='Show number of units (default)', action='store_true')
 
     args = parser.parse_args()
     return args
