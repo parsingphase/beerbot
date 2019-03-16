@@ -66,24 +66,30 @@ def run_cli():
     args = parse_cli_args()
     source = args.source
     dest = args.output
-    show_drinks = args.drinks
     source_data = json.loads(file_contents(source))
-
+    show_legend = args.legend
     daily_summary = {}
     build_checkin_summaries(source_data, daily_summary)
+
+    measure = 'drinks' if args.drinks else 'units'
+
+    image = build_daily_visualisation_image(daily_summary, measure, show_legend)
+
+    if dest:
+        image.saveas(dest, pretty=True)
+    else:
+        image.write(sys.stdout, pretty=True)
+
+
+def build_daily_visualisation_image(daily_summary, measure, show_legend):
     years = set([parse_date(d).year for d in daily_summary])
     min_year = min(years)
     num_years = 1 + max(years) - min_year
-
     width, height_per_year = grid_size(7, 53)
-    show_legend = args.legend
     image_height = height_per_year * num_years + LEGEND_GRID['height'] if show_legend else 0
     image = init_image(width, image_height)
-
     text_vrt_offset = 9
-
     months = 'JFMAMJJASOND'
-
     for year in years:
         year_top = (height_per_year * (year - min_year))
         image.add(
@@ -123,12 +129,7 @@ def run_cli():
                     class_='month'
                 )
             )
-
-    measure = 'drinks' if show_drinks else 'units'
-
     max_daily = ceil(max([daily_summary[d][measure] for d in daily_summary]))
-
-    print('max_daily is %d' % max_daily)
 
     for date_string in daily_summary:
         daily_quantity = daily_summary[date_string][measure]
@@ -137,21 +138,16 @@ def run_cli():
         color = fractional_fill_color(daily_quantity / max_daily) if daily_quantity else '#eeeeee'
         offsets = (0, (year - min_year) * height_per_year)
         image.add(square_in_grid(image, day, week, offsets=offsets, fill=color))
-
     if show_legend:
         top = image_height - LEGEND_GRID['height']
         draw_legend(image, measure, max_daily, top)
-
-    if dest:
-        image.saveas(dest, pretty=True)
-    else:
-        image.write(sys.stdout, True)
+    return image
 
 
 def draw_legend(image: Drawing, measure: str, max_value: float, top: int):
     # Generate up to 5 integer steps
     step = int(ceil(max_value / 5))
-    print('step is %d' % step)
+
     image.add(
         image.text(
             'Daily %s: ' % measure,

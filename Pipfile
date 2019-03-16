@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 python-dateutil = "*"
 requests = ">=2.20.0"
-svgwrite = "*"
+svgwrite = ">=1.2.1"
 
 [dev-packages]
 "flake8" = "*"
