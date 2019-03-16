@@ -1,4 +1,5 @@
 import boto3
+import daily_visualisation
 import imbibed
 import json
 import logging
@@ -84,12 +85,32 @@ def process_checkins_export(loaded_data: list, reply_to: str):
     weekly_buffer = StringIO()
     styles_buffer = StringIO()
     breweries_buffer = StringIO()
-    imbibed.analyze_checkins(
+    image_buffer = StringIO()
+
+    daily = {}
+    weekly = {}
+    styles = {}
+    breweries = {}
+
+    imbibed.build_checkin_summaries(
         loaded_data,
-        weekly_output=weekly_buffer,
-        styles_output=styles_buffer,
-        brewery_output=breweries_buffer
+        daily=daily,
+        weekly=weekly,
+        styles=styles,
+        breweries=breweries,
     )
+
+    imbibed.write_weekly_summary(weekly, weekly_buffer)
+    imbibed.write_styles_summary(styles, styles_buffer)
+    imbibed.write_breweries_summary(breweries, breweries_buffer)
+    image = daily_visualisation.build_daily_visualisation_image(
+        daily,
+        measure='units',
+        show_legend=True
+    )
+
+    image.write(image_buffer, True)
+
     body = 'BeerBot found a check-in export in your email and' \
            ' created the following summaries:\n\n' \
            ' checkin-summary: summarises consumption and score by week\n' \
@@ -102,6 +123,7 @@ def process_checkins_export(loaded_data: list, reply_to: str):
         make_attachment(weekly_buffer, 'bb-checkin-summary.csv', 'text/csv'),
         make_attachment(styles_buffer, 'bb-checkin-styles.csv', 'text/csv'),
         make_attachment(breweries_buffer, 'bb-checkin-breweries.csv', 'text/csv'),
+        make_attachment(image_buffer, 'bb-units-vis.svg', 'image/svg+xml', disposition='inline'),
     ]
     send_email_response(reply_to, body, attachments)
 
@@ -316,11 +338,12 @@ This report was created by "%s"
         print("Email sent! Message ID:", response['MessageId'])
 
 
-def make_attachment(file_data: StringIO, filename: str = None, mime_type: str = 'application/csv') -> MIMEApplication:
+def make_attachment(file_data: StringIO, filename: str, mime_type: str, disposition='attachment') -> MIMEApplication:
     """
     Convert buffer into a MIME file attachment
 
     Args:
+        disposition:
         file_data: buffer data
         filename: Filename for attachment
         mime_type: Content type, treated as application/*
@@ -332,9 +355,8 @@ def make_attachment(file_data: StringIO, filename: str = None, mime_type: str = 
     # Very annoying error on AWS above:
     # encode_base64 and encode_quopri both escape 3+byte unicode chars (above \u00ff) back to \u*** format
     # So - as we're sending UTF8 CSVs only at the moment, we just send them unencoded
-    if filename is None:
-        filename = 'beerbot-export.csv'
-    part.add_header('Content-Disposition', 'attachment', filename=filename)
+
+    part.add_header('Content-Disposition', disposition, filename=filename)
     return part
 
 
