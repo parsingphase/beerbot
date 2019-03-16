@@ -15,15 +15,18 @@ from utils import file_contents
 GRID_PITCH = 13
 GRID_SQUARE = 10
 GRID_BORDERS = {'top': 24, 'left': 52, 'bottom': 16, 'right': 5}
-LEGEND_GRID = {'height': 50, 'left': 400, 'pitch': 32, 'cell_height': 22, 'cell_width': 28}
+LEGEND_GRID = {'height': 50, 'left': 480, 'pitch': 32, 'cell_height': 22, 'cell_width': 28}
 
 COLOR_LOW = (0xff, 0xff, 0xcc)
 COLOR_HIGH = (0x99, 0x22, 0x00)
 
-CSS = '.year {font-weight: bold; font-size: 14px}\n' \
-      'text { font-family: Verdana, Geneva, sans-serif;}\n' \
-      'text.year, text.month, text.day {  font-size: 12px; fill: #777}\n' \
-      'text.key {font-weight: bold; font-size: 14px; text-anchor: middle }'
+CSS = """
+    year {font-weight: bold; font-size: 14px}
+    text { font-family: Verdana, Geneva, sans-serif; }
+    text.year, text.month, text.day, text.legend_title { font-size: 12px; fill: #777}
+    text.key {font-weight: bold; font-size: 14px; text-anchor: middle }
+    text.legend_title {font-weight: bold; font-size: 14px; text-anchor: end }
+"""
 
 
 def grid_size(rows: int, columns: int) -> Tuple[int, int]:
@@ -73,8 +76,8 @@ def run_cli():
     num_years = 1 + max(years) - min_year
 
     width, height_per_year = grid_size(7, 53)
-    draw_legend = args.legend
-    image_height = height_per_year * num_years + LEGEND_GRID['height'] if draw_legend else 0
+    show_legend = args.legend
+    image_height = height_per_year * num_years + LEGEND_GRID['height'] if show_legend else 0
     image = init_image(width, image_height)
 
     text_vrt_offset = 9
@@ -135,33 +138,48 @@ def run_cli():
         offsets = (0, (year - min_year) * height_per_year)
         image.add(square_in_grid(image, day, week, offsets=offsets, fill=color))
 
-    if draw_legend:
-        # Generate up to 5 integer steps
-        step = int(ceil(max_daily / 5))
-        print('step is %d' % step)
-        for offset, marker in enumerate(range(0, max_daily + 1, step)):
-            left = LEGEND_GRID['left'] + offset * LEGEND_GRID['pitch']
-            top = image_height - LEGEND_GRID['height']
-            image.add(
-                image.rect(
-                    (left, top),
-                    (LEGEND_GRID['cell_width'], LEGEND_GRID['cell_height']),
-                    fill=fractional_fill_color(marker / max_daily)
-                )
-            )
-            image.add(
-                image.text(
-                    marker,
-                    insert=(left + LEGEND_GRID['cell_width'] / 2, top + 3 * LEGEND_GRID['cell_height'] / 4),
-                    class_='key',
-                    fill='#ffffff' if marker > max_daily / 2 else '#000000'
-                )
-            )
+    if show_legend:
+        top = image_height - LEGEND_GRID['height']
+        draw_legend(image, measure, max_daily, top)
 
     if dest:
         image.saveas(dest, pretty=True)
     else:
         image.write(sys.stdout, True)
+
+
+def draw_legend(image: Drawing, measure: str, max_value: float, top: int):
+    # Generate up to 5 integer steps
+    step = int(ceil(max_value / 5))
+    print('step is %d' % step)
+    image.add(
+        image.text(
+            'Daily %s: ' % measure,
+            insert=(LEGEND_GRID['left'], top + 3 * LEGEND_GRID['cell_height'] / 4),
+            class_='legend_title'
+        )
+    )
+    steps = list(range(0, int(max_value + 1), step))
+    if max(steps) != int(max_value):
+        steps.append(int(max_value))
+
+    for offset, marker in enumerate(steps):
+        left = LEGEND_GRID['left'] + offset * LEGEND_GRID['pitch']
+        image.add(
+            image.rect(
+                (left, top),
+                (LEGEND_GRID['cell_width'], LEGEND_GRID['cell_height']),
+                fill=fractional_fill_color(marker / max_value)
+            )
+        )
+        image.add(
+            image.text(
+                marker,
+                insert=(left + LEGEND_GRID['cell_width'] / 2, top + 3 * LEGEND_GRID['cell_height'] / 4),
+                class_='key',
+                fill='#ffffff' if marker > max_value / 2 else '#000000'
+            )
+        )
 
 
 def init_image(width: int, height: int) -> Drawing:
