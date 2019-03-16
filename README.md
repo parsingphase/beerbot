@@ -55,6 +55,19 @@ Usage:
 
 Run with `--help` for further details
 
+#### daily_visualisation.py
+
+Generate a graphical visualisation of your past daily consumption as a SVG image.
+
+As with imbibed.py, adding measures to your checkins helps with precision - however you can also just visualise 
+number of drinks by day.
+
+Usage:
+
+    ./daily_visualisation.py data/input.json --output data/output.svg --legend
+
+Run with `--help` for further details
+
 ## Installation and requirements
 
 These scripts are designed for use for those with some experience of running python code. 

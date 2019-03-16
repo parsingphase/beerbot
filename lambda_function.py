@@ -104,9 +104,20 @@ def process_checkins_export(loaded_data: list, reply_to: str):
     imbibed.write_weekly_summary(weekly, weekly_buffer)
     imbibed.write_styles_summary(styles, styles_buffer)
     imbibed.write_breweries_summary(breweries, breweries_buffer)
+
+    count_all_checkins = len(daily.keys())
+    count_with_measure = len([1 for d in daily if 'beverage_ml' in daily[d]])
+
+    if count_with_measure > (count_all_checkins / 3):
+        measure = 'units'
+    else:
+        measure = 'drinks'
+
+    print('%d measures in %d checkins, visualising %s' % (count_with_measure, count_all_checkins, measure))
+
     image = daily_visualisation.build_daily_visualisation_image(
         daily,
-        measure='units',
+        measure=measure,
         show_legend=True
     )
 
@@ -120,7 +131,7 @@ def process_checkins_export(loaded_data: list, reply_to: str):
            'plus a visualisation of your consumption over time in bb-units-vis.svg \n\n' \
            'bb-checkin-summary.csv may contain notes on estimated consumption: \n' \
            '* = Some measures guessed from serving. \n' \
-           '** = Some beers skipped due to no serving or measure\n\n'
+           '** = Some beers skipped due to no serving or measure\n'
     attachments = [
         make_attachment(image_buffer, 'bb-units-vis.svg', 'image/svg+xml', disposition='inline'),
         make_attachment(weekly_buffer, 'bb-checkin-summary.csv', 'text/csv'),
