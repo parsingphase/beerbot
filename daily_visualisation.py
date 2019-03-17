@@ -38,12 +38,15 @@ def grid_size(rows: int, columns: int) -> Tuple[int, int]:
 
 
 # SVG puts 0,0 at top left
-def square_in_grid(image: Drawing, row: int, column: int, offsets=(), fill='#ffdd00'):
+def square_in_grid(image: Drawing, row: int, column: int, fill, offsets=(), title=None):
     x_offset = offsets[0] if len(offsets) else 0
     y_offset = offsets[1] if len(offsets) > 1 else 0
     left = grid_square_left(column, x_offset)
     top = grid_square_top(row, y_offset)
-    return image.rect(insert=(left, top), size=(GRID_SQUARE, GRID_SQUARE), fill=fill)
+    rect = image.rect(insert=(left, top), size=(GRID_SQUARE, GRID_SQUARE), fill=fill)
+    if title is not None:
+        rect.set_desc(title=title)
+    return rect
 
 
 def grid_square_top(row, y_offset=0):
@@ -136,9 +139,11 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
             color = fractional_fill_color((daily_quantity - range_min) / (max_daily - range_min))
 
         year = day_date.year
-        offsets = (0, (year - min_year) * height_per_year)
+        offset = (0, (year - min_year) * height_per_year)
+        amount_string = round(daily_quantity, 1) if daily_quantity else '?'
+        title = day_date.strftime('%b') + (' %d: %s' % (day_date.day, amount_string))
 
-        image.add(square_for_date(image, day_date, color, offsets))
+        image.add(square_for_date(image, day_date, color, grid_offset=offset, title=title))
 
     if show_legend:
         top = image_height - LEGEND_GRID['height']
@@ -148,10 +153,10 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
     return image
 
 
-def square_for_date(image, day_date, color, offsets):
+def square_for_date(image, day_date, color, grid_offset=(), title=None):
     year, week, day = isocalendar_natural(day_date)
 
-    day_square = square_in_grid(image, day, week, offsets=offsets, fill=color)
+    day_square = square_in_grid(image, row=day, column=week, offsets=grid_offset, fill=color, title=title)
     return day_square
 
 
