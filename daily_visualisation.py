@@ -17,8 +17,8 @@ GRID_SQUARE = 10
 GRID_BORDERS = {'top': 24, 'left': 52, 'bottom': 16, 'right': 10}
 LEGEND_GRID = {'height': 50, 'left': 480, 'pitch': 32, 'cell_height': 22, 'cell_width': 28}
 
-COLOR_LOW = (0xff, 0xff, 0xcc)
-COLOR_HIGH = (0x99, 0x22, 0x00)
+COLOR_LOW = (0xff, 0xff, 0xaa)
+COLOR_HIGH = (0xaa, 0x22, 0x00)
 
 CSS = """
     year { font-weight: bold; font-size: 14px }
@@ -124,7 +124,7 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
         day_date = parse_date(date_string)
 
         if daily_quantity is None:
-            color = '#eeeeee'
+            color = '#e0e0e0'
         else:
             color = fractional_fill_color((daily_quantity - range_min) / (max_daily - range_min))
 
