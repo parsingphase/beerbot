@@ -9,7 +9,7 @@ from typing import Optional
 from datetime import timedelta
 from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
 from typing import TextIO
-from utils import file_contents
+from utils import file_contents, filter_source_data
 
 DEFAULT_UNIT = 'pint'
 DEFAULT_SERVING_SIZES = {'draft': 568 / 2, 'cask': 568 / 2, 'taster': 150, 'bottle': 330, 'can': 330}
@@ -113,7 +113,7 @@ def measure_from_serving(serving: str) -> Optional[int]:
 def parse_cli_args():
     parser = argparse.ArgumentParser(
         description='Analyse consumption of alcoholic drinks from an Untappd JSON export file',
-        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--weekly|--daily|--style|--brewery] [--help]',
+        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--weekly|--daily|--style|--brewery] [--filter=…] [--help]',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=('Filter is based on JSON input keys.\nExample usages:\n'
                 '    "--filter=venue_name=The Red Lion"\n    "--filter=created_at>2017-10-01"'
@@ -476,97 +476,6 @@ def run_cli():
 
     if dest:
         output_handle.close()
-
-
-def filter_source_data(filter_strings: list, source_data: list, verbose: bool = False):
-    """
-    Filter source data according to a list of rules
-    Args:
-        filter_strings: The rules in simple string format
-        source_data: JSON source data from export
-        verbose: Emit debug if true
-
-    Returns:
-        Filtered source data
-    """
-
-    ruleset = []
-
-    def create_test_function(key: str, comparator: str, value: str):
-
-        def test_empty(row):
-            result = row[key] is None or row[key] == ''
-            if verbose:
-                print('Check [%s] (%s) is None: %s' % (key, row[key], repr(result)))
-            return result
-
-        def test_equals(row):
-            result = row[key] is not None and row[key].lower() == value.lower()
-            if verbose:
-                print('Check [%s] (%s) = %s: %s' % (key, row[key], value, repr(result)))
-            return result
-
-        def test_greater(row):
-            result = row[key] is not None and row[key].lower() > value.lower()
-            if verbose:
-                print('Check [%s] (%s) > %s: %s' % (key, row[key], value, repr(result)))
-            return result
-
-        def test_less(row):
-            result = row[key] is not None and row[key].lower() < value.lower()
-            if verbose:
-                print('Check [%s] (%s) < %s: %s' % (key, row[key], value, repr(result)))
-            return result
-
-        def test_starts(row):
-            result = row[key] is not None and row[key].lower().find(value.lower()) == 0
-            if verbose:
-                print('Check [%s] (%s) ~ %s: %s' % (key, row[key], value, repr(result)))
-            return result
-
-        def test_not(row):
-            result = row[key] is None or row[key].lower() != value.lower()
-            if verbose:
-                print('Check [%s] (%s) ^ %s: %s' % (key, row[key], value, repr(result)))
-            return result
-
-        if comparator == '=':
-            if value == '':
-                test = test_empty
-            else:
-                test = test_equals
-        elif comparator == '>':
-            test = test_greater
-        elif comparator == '<':
-            test = test_less
-        elif comparator == '~':
-            test = test_starts
-        elif comparator == '^':
-            test = test_not
-        else:
-            raise Exception('Bad rule comparator ' + comparator)
-
-        return test
-
-    for filter_string in filter_strings:
-        parts = re.match(r'(?P<key>[a-z_]+)(?P<comparator>[=<>~^])(?P<value>.*)', filter_string)
-
-        if parts is None:
-            raise Exception('Failed to parse rule: ' + filter_string)
-
-        ruleset.append({'test': create_test_function(**parts.groupdict()), 'filter': parts.groupdict()})
-
-    def input_filter(row):
-        result = True
-        for rule in ruleset:
-            if not rule['test'](row):
-                result = False
-                break
-
-        return result
-
-    source_data = [row for row in source_data if input_filter(row)]
-    return source_data
 
 
 if __name__ == '__main__':

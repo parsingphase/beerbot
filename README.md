@@ -37,6 +37,7 @@ Where:
    - `>` Greater than
    - `<` Less than
    - `~` Starts with
+   - `?` Contains
  - `VALUE` is the value to compare against, in a case insensitive manner. Leaving the value blank with `=` allows matching of an empty field.
  Note that all values are processed as strings, so `created_at>2018-11` will include everything from 2018-11-01 onwards  
  

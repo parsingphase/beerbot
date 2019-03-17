@@ -10,7 +10,7 @@ from imbibed import build_checkin_summaries
 from math import ceil, floor
 from svgwrite import Drawing
 from typing import Tuple
-from utils import file_contents
+from utils import file_contents, filter_source_data
 
 GRID_PITCH = 15
 GRID_SQUARE = 10
@@ -78,6 +78,13 @@ def run_cli():
     dest = args.output
     source_data = json.loads(file_contents(source))
     show_legend = args.legend
+
+    filter_strings = args.filter
+    if filter_strings:
+        source_data = filter_source_data(filter_strings, source_data)
+        if not source_data:
+            raise Exception('Your filter left no data to analyse')
+
     daily_summary = {}
     build_checkin_summaries(source_data, daily_summary)
 
@@ -345,8 +352,11 @@ def init_image(width: int, height: int) -> Drawing:
 def parse_cli_args():
     parser = argparse.ArgumentParser(
         description='Visualise consumption of alcoholic drinks from an Untappd JSON export file',
-        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--drinks|--units] [--legend]',
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--drinks|--units] [--legend] [--filter=…] [--help]',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=('Filter is based on JSON input keys.\nExample usages:\n'
+                '    "--filter=venue_name=The Red Lion"\n    "--filter=created_at>2017-10-01"'
+                )
     )
     parser.add_argument('source', help='Path to source file (export.json)')
     parser.add_argument('--output', required=False, help='Path to output file, STDOUT if not specified')
@@ -355,6 +365,11 @@ def parse_cli_args():
     group.add_argument('--units', help='Show number of units (default)', action='store_true')
     group.add_argument('--drinks', help='Show number of drinks', action='store_true')
     group.add_argument('--average', help='Show average score)', action='store_true')
+
+    parser.add_argument('--filter',
+                        metavar='RULE',
+                        help='Filter input list by rule',
+                        action='append')
 
     args = parser.parse_args()
     return args
