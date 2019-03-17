@@ -12,9 +12,9 @@ from svgwrite import Drawing
 from typing import Tuple
 from utils import file_contents
 
-GRID_PITCH = 13
+GRID_PITCH = 15
 GRID_SQUARE = 10
-GRID_BORDERS = {'top': 24, 'left': 52, 'bottom': 16, 'right': 5}
+GRID_BORDERS = {'top': 24, 'left': 52, 'bottom': 16, 'right': 10}
 LEGEND_GRID = {'height': 50, 'left': 480, 'pitch': 32, 'cell_height': 22, 'cell_width': 28}
 
 COLOR_LOW = (0xff, 0xff, 0xcc)
@@ -25,6 +25,7 @@ CSS = """
     text { font-family: Verdana, Geneva, sans-serif; }
     text.year, text.month, text.day, text.legend_title { font-size: 12px; fill: #777 }
     text.month { text-anchor: middle }
+    text.year, text.day { text-anchor: end }
     text.key { font-weight: bold; font-size: 14px; text-anchor: middle }
     text.legend_title {font-weight: bold; font-size: 14px; text-anchor: end }
 """
@@ -99,7 +100,7 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
     years = set([parse_date(d).year for d in daily_summary])
     min_year = min(years)
     num_years = 1 + max(years) - min_year
-    width, height_per_year = grid_size(7, 53)
+    width, height_per_year = grid_size(7, 54)  # 52 weeks + ISO weeks 0, 53
     image_height = height_per_year * num_years + (LEGEND_GRID['height'] if show_legend else 0)
     image = init_image(width, image_height)
 
@@ -141,9 +142,7 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
 
 
 def square_for_date(image, day_date, color, offsets):
-    (iso_year, week, day) = day_date.isocalendar()
-    if day_date.month == 1 and week > 50:
-        week = 1
+    year, week, day = isocalendar_natural(day_date)
 
     day_square = square_in_grid(image, day, week, offsets=offsets, fill=color)
     return day_square
@@ -155,21 +154,21 @@ def draw_year_labels(image, year, year_top):
     image.add(
         image.text(
             '%d' % year,
-            insert=(GRID_BORDERS['left'] - 46, year_top + GRID_BORDERS['top'] + text_vrt_offset - GRID_PITCH - 2),
+            insert=(GRID_BORDERS['left'] - 8, year_top + GRID_BORDERS['top'] + text_vrt_offset - GRID_PITCH - 2),
             class_='year'
         )
     )
     image.add(
         image.text(
             'Mo',
-            insert=(GRID_BORDERS['left'] - 24, year_top + GRID_BORDERS['top'] + text_vrt_offset),
+            insert=(GRID_BORDERS['left'] - 8, year_top + GRID_BORDERS['top'] + text_vrt_offset),
             class_='day'
         )
     )
     image.add(
         image.text(
             'Su',
-            insert=(GRID_BORDERS['left'] - 24, year_top + GRID_BORDERS['top'] + text_vrt_offset + 6 * GRID_PITCH),
+            insert=(GRID_BORDERS['left'] - 8, year_top + GRID_BORDERS['top'] + text_vrt_offset + 6 * GRID_PITCH),
             class_='day'
         )
     )
@@ -181,7 +180,7 @@ def draw_year_labels(image, year, year_top):
             image.text(
                 month,
                 insert=(
-                    offset_point(start_location, (GRID_PITCH / 2, 0))[0],
+                    offset_point(start_location, (GRID_PITCH + (GRID_SQUARE / 2), 0))[0],
                     year_top + GRID_BORDERS['top'] + text_vrt_offset - GRID_PITCH - 2
                 ),
                 class_='month'
@@ -192,40 +191,36 @@ def draw_year_labels(image, year, year_top):
 
 def draw_month_boundary(image, month_number, year, year_top):
     start_location = month_start_location(month_number, year, year_top)
-    end_location = month_end_location(month_number, year, year_top)
-    if date(int(year), month_number, 1) < date.today():
-        month_grid_color = '#888'
-        image.add(
-            image.line(
-                # SVG lines seem to draw .5 px low compared to rects
-                start=offset_point(start_location, (-1.5, -1.5)),
-                end=offset_point(start_location, (GRID_SQUARE + 1.5, -1.5)),
-                stroke=month_grid_color,
-                stroke_width=1
-            )
-        )
-        image.add(
-            image.line(
-                start=offset_point(start_location, (-1.5, -1.5)),
-                end=(
-                    offset_point(start_location, (-1.5, -1.5))[0],
-                    grid_square_top(7, year_top) + GRID_SQUARE + 1.5
-                ),
-                stroke=month_grid_color,
-                stroke_width=1
-            )
-        )
-        image.add(
-            image.line(
-                start=offset_point(start_location, (GRID_SQUARE + 1.5, -1.5)),
-                end=(
-                    offset_point(start_location, (GRID_SQUARE + 1.5, 1.5))[0],
-                    grid_square_top(1, year_top) - 1.5
-                ),
-                stroke=month_grid_color,
-                stroke_width=1
-            )
-        )
+    end_location = offset_point(month_end_location(month_number, year, year_top), (0, GRID_PITCH))
+    if date(year, month_number, 1) < date.today():
+        half_pitch = (GRID_PITCH - GRID_SQUARE) / 2
+        points = [
+            (
+                offset_point(start_location, (GRID_SQUARE + half_pitch, half_pitch))[0],
+                grid_square_top(1, year_top) - half_pitch
+            ),
+            offset_point(start_location, (GRID_SQUARE + half_pitch, -half_pitch)),
+            offset_point(start_location, (-half_pitch, -half_pitch)),
+            (
+                offset_point(start_location, (-half_pitch, -half_pitch))[0],
+                grid_square_top(7, year_top) + GRID_SQUARE + half_pitch
+            ),
+            (
+                offset_point(end_location, (-half_pitch, -half_pitch))[0],
+                grid_square_top(7, year_top) + GRID_SQUARE + half_pitch
+            ),
+            offset_point(end_location, (-half_pitch, -half_pitch)),
+            offset_point(end_location, (GRID_SQUARE + half_pitch, -half_pitch)),
+            (
+                offset_point(end_location, (GRID_SQUARE + half_pitch, half_pitch))[0],
+                grid_square_top(1, year_top) - half_pitch
+            ),
+            (
+                offset_point(start_location, (GRID_SQUARE + half_pitch, half_pitch))[0],
+                grid_square_top(1, year_top) - half_pitch
+            ),
+        ]
+        image.add(image.polyline(points, fill='#f4f4f4' if month_number % 2 else '#fff'))
 
 
 def month_start_location(month, year, y_offset):
@@ -278,8 +273,28 @@ def date_location(when, y_offset) -> tuple:
     Returns:
         tuple of x,y position
     """
-    (week_year, week, day) = when.isocalendar()
-    return grid_square_left(0 if (when.month == 1 and week > 50) else week), grid_square_top(day, y_offset)
+    year, week, day = isocalendar_natural(when)
+    return grid_square_left(week), grid_square_top(day, y_offset)
+
+
+def isocalendar_natural(when):
+    """
+    Isocalendar week number without crossing month boundaries
+
+    Args:
+        when:
+
+    Returns:
+
+    """
+    real_year = when.year
+    (iso_year, week, day) = when.isocalendar()
+    if iso_year > real_year:
+        week = 53
+    elif iso_year < real_year:
+        week = 0
+
+    return real_year, week, day
 
 
 def offset_point(point: tuple, by: tuple) -> tuple:
