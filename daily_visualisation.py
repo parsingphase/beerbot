@@ -4,7 +4,7 @@ import argparse
 import json
 import sys
 
-from datetime import date
+from datetime import date, timedelta
 from dateutil.parser import parse as parse_date
 from imbibed import build_checkin_summaries
 from math import ceil, floor
@@ -24,6 +24,7 @@ CSS = """
     year { font-weight: bold; font-size: 14px }
     text { font-family: Verdana, Geneva, sans-serif; }
     text.year, text.month, text.day, text.legend_title { font-size: 12px; fill: #777 }
+    text.month { text-anchor: middle }
     text.key { font-weight: bold; font-size: 14px; text-anchor: middle }
     text.legend_title {font-weight: bold; font-size: 14px; text-anchor: end }
 """
@@ -39,9 +40,17 @@ def grid_size(rows: int, columns: int) -> Tuple[int, int]:
 def square_in_grid(image: Drawing, row: int, column: int, offsets=(), fill='#ffdd00'):
     x_offset = offsets[0] if len(offsets) else 0
     y_offset = offsets[1] if len(offsets) > 1 else 0
-    left = GRID_BORDERS['left'] + (column - 1) * GRID_PITCH + x_offset
-    top = GRID_BORDERS['top'] + (row - 1) * GRID_PITCH + y_offset
+    left = grid_square_left(column, x_offset)
+    top = grid_square_top(row, y_offset)
     return image.rect(insert=(left, top), size=(GRID_SQUARE, GRID_SQUARE), fill=fill)
+
+
+def grid_square_top(row, y_offset=0):
+    return GRID_BORDERS['top'] + (row - 1) * GRID_PITCH + y_offset
+
+
+def grid_square_left(column, x_offset=0):
+    return GRID_BORDERS['left'] + column * GRID_PITCH + x_offset
 
 
 def fractional_fill_color(fraction: float) -> str:
@@ -93,48 +102,15 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
     width, height_per_year = grid_size(7, 53)
     image_height = height_per_year * num_years + (LEGEND_GRID['height'] if show_legend else 0)
     image = init_image(width, image_height)
-    text_vrt_offset = 9
-    months = 'JFMAMJJASOND'
 
     for year in years:
         year_top = (height_per_year * (year - min_year))
-        image.add(
-            image.text(
-                '%d' % year,
-                insert=(GRID_BORDERS['left'] - 46, year_top + GRID_BORDERS['top'] + text_vrt_offset - GRID_PITCH - 2),
-                class_='year'
-            )
-        )
-        image.add(
-            image.text(
-                'Mo',
-                insert=(GRID_BORDERS['left'] - 24, year_top + GRID_BORDERS['top'] + text_vrt_offset),
-                class_='day'
-            )
-        )
-        image.add(
-            image.text(
-                'Su',
-                insert=(GRID_BORDERS['left'] - 24, year_top + GRID_BORDERS['top'] + text_vrt_offset + 6 * GRID_PITCH),
-                class_='day'
-            )
-        )
+        months = draw_year_labels(image, year, year_top)
 
-        # Draw month initials in line with first day of month
-        for num, month in enumerate(months):
-            month_start_date = date(year, num + 1, 1)
-            (week_year, week, _) = month_start_date.isocalendar()
-            week = 1 if num == 0 and year != week_year else week  # If Jan 1 not in this isoyear, shift it to 1st week
-            image.add(
-                image.text(
-                    month,
-                    insert=(
-                        GRID_BORDERS['left'] + GRID_PITCH * (week - 1),
-                        year_top + GRID_BORDERS['top'] + text_vrt_offset - GRID_PITCH - 2
-                    ),
-                    class_='month'
-                )
-            )
+        for month_index, month in enumerate(months):
+            # Draw lines between months
+            draw_month_boundary(image, month_index + 1, year, year_top)
+
     max_daily = ceil(max([daily_summary[d][measure] if measure in daily_summary[d] else 0 for d in daily_summary]))
 
     if measure == 'average':
@@ -145,15 +121,16 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
     for date_string in daily_summary:
         daily_quantity = daily_summary[date_string][measure] if measure in daily_summary[date_string] else None
         day_date = parse_date(date_string)
-        (year, week, day) = day_date.isocalendar()
 
         if daily_quantity is None:
             color = '#eeeeee'
         else:
             color = fractional_fill_color((daily_quantity - range_min) / (max_daily - range_min))
 
+        year = day_date.year
         offsets = (0, (year - min_year) * height_per_year)
-        image.add(square_in_grid(image, day, week, offsets=offsets, fill=color))
+
+        image.add(square_for_date(image, day_date, color, offsets))
 
     if show_legend:
         top = image_height - LEGEND_GRID['height']
@@ -161,6 +138,152 @@ def build_daily_visualisation_image(daily_summary, measure, show_legend):
         draw_legend(image, measure, top, max_daily, range_min)
 
     return image
+
+
+def square_for_date(image, day_date, color, offsets):
+    (iso_year, week, day) = day_date.isocalendar()
+    if day_date.month == 1 and week > 50:
+        week = 1
+
+    day_square = square_in_grid(image, day, week, offsets=offsets, fill=color)
+    return day_square
+
+
+def draw_year_labels(image, year, year_top):
+    months = 'JFMAMJJASOND'
+    text_vrt_offset = 9
+    image.add(
+        image.text(
+            '%d' % year,
+            insert=(GRID_BORDERS['left'] - 46, year_top + GRID_BORDERS['top'] + text_vrt_offset - GRID_PITCH - 2),
+            class_='year'
+        )
+    )
+    image.add(
+        image.text(
+            'Mo',
+            insert=(GRID_BORDERS['left'] - 24, year_top + GRID_BORDERS['top'] + text_vrt_offset),
+            class_='day'
+        )
+    )
+    image.add(
+        image.text(
+            'Su',
+            insert=(GRID_BORDERS['left'] - 24, year_top + GRID_BORDERS['top'] + text_vrt_offset + 6 * GRID_PITCH),
+            class_='day'
+        )
+    )
+    # Draw month initials in line with first day of month
+    for month_index, month in enumerate(months):
+        start_location = month_start_location(month_index + 1, year, year_top)
+
+        image.add(
+            image.text(
+                month,
+                insert=(
+                    offset_point(start_location, (GRID_PITCH / 2, 0))[0],
+                    year_top + GRID_BORDERS['top'] + text_vrt_offset - GRID_PITCH - 2
+                ),
+                class_='month'
+            )
+        )
+    return months
+
+
+def draw_month_boundary(image, month_number, year, year_top):
+    start_location = month_start_location(month_number, year, year_top)
+    end_location = month_end_location(month_number, year, year_top)
+    if date(int(year), month_number, 1) < date.today():
+        month_grid_color = '#888'
+        image.add(
+            image.line(
+                # SVG lines seem to draw .5 px low compared to rects
+                start=offset_point(start_location, (-1.5, -1.5)),
+                end=offset_point(start_location, (GRID_SQUARE + 1.5, -1.5)),
+                stroke=month_grid_color,
+                stroke_width=1
+            )
+        )
+        image.add(
+            image.line(
+                start=offset_point(start_location, (-1.5, -1.5)),
+                end=(
+                    offset_point(start_location, (-1.5, -1.5))[0],
+                    grid_square_top(7, year_top) + GRID_SQUARE + 1.5
+                ),
+                stroke=month_grid_color,
+                stroke_width=1
+            )
+        )
+        image.add(
+            image.line(
+                start=offset_point(start_location, (GRID_SQUARE + 1.5, -1.5)),
+                end=(
+                    offset_point(start_location, (GRID_SQUARE + 1.5, 1.5))[0],
+                    grid_square_top(1, year_top) - 1.5
+                ),
+                stroke=month_grid_color,
+                stroke_width=1
+            )
+        )
+
+
+def month_start_location(month, year, y_offset):
+    """
+    Return top-left position of grid square on first day of month
+
+    Args:
+        month:
+        year:
+        y_offset:
+
+    Returns:
+
+    """
+    month_start_date = date(year, month, 1)
+    return date_location(month_start_date, y_offset)
+
+
+def month_end_location(month, year, y_offset):
+    """
+    Return top-left position of grid square on last day of month
+
+    Args:
+        month:
+        year:
+        y_offset:
+
+    Returns:
+
+    """
+    if month == 12:
+        next_month = 1
+        next_month_year = year + 1
+    else:
+        next_month = month + 1
+        next_month_year = year
+
+    month_end_date = date(next_month_year, next_month, 1) - timedelta(days=1)
+    return date_location(month_end_date, y_offset)
+
+
+def date_location(when, y_offset) -> tuple:
+    """
+    Return top-left position of grid square on given day
+
+    Args:
+        when:
+        y_offset:
+
+    Returns:
+        tuple of x,y position
+    """
+    (week_year, week, day) = when.isocalendar()
+    return grid_square_left(0 if (when.month == 1 and week > 50) else week), grid_square_top(day, y_offset)
+
+
+def offset_point(point: tuple, by: tuple) -> tuple:
+    return point[0] + by[0], point[1] + by[1]
 
 
 def draw_legend(image: Drawing, measure: str, top: int, range_max: float, range_min: int = 0):
