@@ -85,7 +85,7 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
         stocklist.append(['Expiry', 'Type', '#', 'Brewery', 'Beverage', 'Subtype', 'ABV', 'Serving', 'BBE'])
         for k, expiry_set in enumerate(expiry_sets):
             if len(expiry_sets[k]):
-                distinct_beer_count = len(expiry_set)
+                distinct_beer_count = sum([sum([1 for d in expiry_set[style]]) for style in expiry_set])
                 if list_has_quantities:
                     quantity = sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set])
                     stocklist.append(
@@ -156,7 +156,7 @@ def parse_cli_args() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser(
         description='Summarise expiry dates and types of beers on a list',
-        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--summary] [--help]'
+        usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--summary|--html] [--help]'
     )
     parser.add_argument('source', help='Path to source file (export.json)')
     group = parser.add_mutually_exclusive_group(required=True)
