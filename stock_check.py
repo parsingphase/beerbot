@@ -135,6 +135,16 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
                 if len(expiry_sets) > k + 1:
                     stocklist.append([''])  # space before next
 
+        if list_has_quantities:
+            stocklist.append(
+                [
+                    'TOTAL: %d items of %d beers' % (
+                        sum([int(item['quantity']) for item in source_data]),
+                        len(source_data)
+                    )
+                ]
+            )
+
     if style_summary is not None:
         style_list = []
         for style in styles:
