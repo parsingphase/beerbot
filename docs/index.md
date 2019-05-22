@@ -48,7 +48,7 @@ Reports will be attached as CSVs, and your latest list export will also be store
  to keep the list online permanently.
  - As there is no information about which list you've chosen to export in Untappd's data, only your latest list submission 
  can be stored online.
- - If Beerbot doesn't reply, or it reports an error, please report the issue to [richard@phase.org](mailto:richard@phase.org?subject=Beerbot Issue). 
+ - If Beerbot doesn't reply, or it reports an error, please report the issue to [richard@parsingphase.dev](mailto:richard@parsingphase.dev?subject=Beerbot Issue). 
  Note that I may ask you to forward your export email to resolve complex issues, but even if you're not happy sharing 
  that data, all fault reports will be gratefully appreciated.
  - This is a free, non-configurable service. If you're not happy sharing your data or having your list be reachable online

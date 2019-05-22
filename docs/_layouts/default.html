@@ -32,7 +32,9 @@
           <li><a class="buttons github" href="{{ site.github.repository_url }}">View On GitHub</a></li>
         </ul>
 
-        {% if site.github.is_project_page %}
+        {% if site.github.owner_name == 'parsingphase' %}
+          <p class="header">This project is maintained by <a class="header name" href="https://parsingphase.dev">{{ site.github.owner_name }}</a></p>
+          {% else %}
           <p class="header">This project is maintained by <a class="header name" href="{{ site.github.owner_url }}">{{ site.github.owner_name }}</a></p>
         {% endif %}
 
@@ -48,7 +50,7 @@
       </section>
 
       <section class="footer">
-                <p><small>© Richard George, 2018-2019<br />
+          <p><small>© <a href="https://parsingphase.dev">Richard George</a>, 2018-2019<br />
                 This project is not affiliated with or endorsed by Untappd, Inc.</small></p>
       </section>
 
