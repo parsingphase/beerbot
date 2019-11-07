@@ -2,112 +2,13 @@
 
 import argparse
 import csv
-import re
 import sys
 import json
-from typing import Optional
 from datetime import timedelta
 from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
+from measures import Region, MeasureProcessor
 from typing import TextIO
-from utils import file_contents, filter_source_data
-
-DEFAULT_UNIT = 'pint'
-DEFAULT_SERVING_SIZES = {'draft': 568 / 2, 'cask': 568 / 2, 'taster': 150, 'bottle': 330, 'can': 330}
-MAX_VALID_MEASURE = 2500  # For detection of valid inputs. More than a yard of ale or a Maß
-
-
-def parse_measure(measure_string: str) -> int:
-    """
-    Read a measure as recorded in the comment field and parse it into a number of millilitres
-    Args:
-        measure_string: String as found in square brackets
-
-    Returns:
-        Integer number of ml
-    """
-    divisors = {'quarter': 4, 'third': 3, 'half': 2}
-    divisor_match = '(?P<divisor_text>' + '|'.join(divisors.keys()) + ')'
-    units = {
-        'ml': 1,
-        'cl': 10,
-        'litre': 1000,
-        'liter': 1000,  # Accept variant spelling
-        'pint': 568,
-        'sip': 25,
-        'taste': 25,
-        'oz': 29.5735,  # Assume US Fluid ounce as UK more commonly uses ml. Difference only 29.5735 to 28.4131 anyway
-        'ounce': 29.5735
-    }
-    unit_match = '(?P<unit>' + '|'.join(units.keys()) + ')s?'  # allow plurals
-    optional_unit_match = '(' + unit_match + ')?'
-    fraction_match = r'(?P<fraction>\d+/\d+)'
-    quantity_match = r'(?P<quantity>[\d\.]+)'
-    optional_space = r'\s*'
-    candidate_matches = [
-        '^' + unit_match + '$',
-        '^' + quantity_match + optional_space + optional_unit_match + '$',
-        '^' + divisor_match + optional_space + optional_unit_match + '$',
-        '^' + fraction_match + optional_space + optional_unit_match + '$',
-    ]
-
-    match = None
-    quantity = None
-
-    for pattern in candidate_matches:
-        match = re.match(pattern, measure_string)
-        if match:
-            break
-
-    if match:
-        match_dict = match.groupdict()
-        unit = match_dict['unit'] if 'unit' in match_dict and match_dict['unit'] is not None else DEFAULT_UNIT
-        quantity = units[unit]
-        if 'quantity' in match_dict:
-            quantity *= float(match_dict['quantity'])
-        elif 'divisor_text' in match_dict:
-            quantity /= divisors[match_dict['divisor_text']]
-        elif 'fraction' in match_dict:
-            fraction_parts = [int(s) for s in match_dict['fraction'].split('/')]
-            quantity = quantity * fraction_parts[0] / fraction_parts[1]
-
-        if quantity > MAX_VALID_MEASURE:
-            raise Exception('Measure of [%s] appears to be invalid. Did you miss out a unit?' % measure_string)
-
-    return int(quantity) if quantity else None
-
-
-def measure_from_comment(comment: str) -> Optional[int]:
-    """
-    Extract any mention of a measure (in square brackets) from the comment string on a checkin, and parse it
-
-    Args:
-        comment: Checking comment field
-
-    Returns:
-        int measure in ml
-    """
-    measure_match = re.search(r'\[([^\[\]]+)\]', comment)  # evil thing to match!
-    match_string = measure_match[1] if measure_match else None
-    if match_string:
-        drink_measure = parse_measure(match_string)
-    else:
-        drink_measure = None
-    return drink_measure
-
-
-def measure_from_serving(serving: str) -> Optional[int]:
-    """
-    Get a default measure size from the serving style, if possible
-    Args:
-        serving: One of the Untappd serving names
-
-    Returns:
-        int measure in ml
-    """
-    serving = serving.lower()
-    defaults = DEFAULT_SERVING_SIZES
-    drink_measure = defaults[serving] if serving in defaults else None
-    return drink_measure
+from utils import debug_print, file_contents, filter_source_data
 
 
 def parse_cli_args():
@@ -198,6 +99,7 @@ def build_checkin_summaries(
     """
     first_date = None
     last_date = None
+    current_region = Region.EUROPE
 
     # We need this to build with, even if we don't return it
     if daily is None:
@@ -223,14 +125,30 @@ def build_checkin_summaries(
             }
 
         daily[date_key]['drinks'] += 1
+
+        # Very dumb decision making at the moment
+        last_region = current_region
+        if checkin['venue_country']:
+            if checkin['venue_country'] == 'United States':
+                current_region = Region.USA
+            else:
+                current_region = Region.EUROPE
+
+        if last_region != current_region:
+            debug_print(f"Switched region to {current_region}")
+
+        # TODO: If bottle or can, set parser region by manufacturer
+
         if checkin['rating_score']:
             daily[date_key]['rated'] += 1
             daily[date_key]['total_score'] += float(checkin['rating_score'])
             daily[date_key]['average'] = daily[date_key]['total_score'] / daily[date_key]['rated']
 
-        measure = measure_from_comment(checkin['comment'])
+        processor = MeasureProcessor(current_region)
+
+        measure = processor.measure_from_comment(checkin['comment'])
         if measure is None:
-            measure = measure_from_serving(checkin['serving_type'])
+            measure = processor.measure_from_serving(checkin['serving_type'])
             daily[date_key]['estimated'] = '*'
 
         if measure:
