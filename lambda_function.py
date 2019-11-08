@@ -1,26 +1,28 @@
-import boto3
-import daily_visualisation
-import imbibed
 import json
 import logging
 import re
-import requests
-import stock_check
-
-from botocore.exceptions import ClientError
-from bot_version import version
 from datetime import datetime, timedelta
 from email import encoders
-from email.parser import Parser as EmailParser
 from email.message import Message
+from email.mime.application import MIMEApplication
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
+from email.parser import Parser as EmailParser
 from hashlib import sha256
 from io import StringIO
-from typing import Optional, List
-from utils import build_csv_from_list, get_config, debug_print
+from typing import List, Optional
+
+import boto3
+import requests
+from botocore.exceptions import ClientError
+
+import daily_visualisation
+import imbibed
+import stock_check
+from bot_version import version
+from utils import build_csv_from_list, debug_print, get_config
+
 
 EXPORT_TYPE_LIST = 'list'
 EXPORT_TYPE_CHECKINS = 'checkins'

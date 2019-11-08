@@ -13,3 +13,4 @@ Gemfile.lock
 docs/.sass-cache
 docs/_site
 config.py
+resources
