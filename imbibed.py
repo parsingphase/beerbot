@@ -99,7 +99,17 @@ def build_checkin_summaries(
     """
     first_date = None
     last_date = None
-    current_region = Region.EUROPE
+
+    # Try and guess a default country for this user
+    # First, by checkin
+    # Else, by manufacturer (not really reliable, but only used if no located checkins)
+    first_country = next(c['venue_country'] for c in source_data if c['venue_country'])
+    if not first_country:
+        first_country = next(c['brewery_country'] for c in source_data if c['brewery_country'])
+
+    current_region = Region.USA if first_country == 'United States' else Region.EUROPE
+    # FIXME check the first checkin location and use that as the default
+    debug_print(f"Default region: {current_region}")
 
     # We need this to build with, even if we don't return it
     if daily is None:
@@ -126,25 +136,35 @@ def build_checkin_summaries(
 
         daily[date_key]['drinks'] += 1
 
-        # Very dumb decision making at the moment
-        last_region = current_region
-        if checkin['venue_country']:
-            if checkin['venue_country'] == 'United States':
-                current_region = Region.USA
-            else:
-                current_region = Region.EUROPE
-
-        if last_region != current_region:
-            debug_print(f"Switched region to {current_region}")
-
-        # TODO: If bottle or can, set parser region by manufacturer
-
         if checkin['rating_score']:
             daily[date_key]['rated'] += 1
             daily[date_key]['total_score'] += float(checkin['rating_score'])
             daily[date_key]['average'] = daily[date_key]['total_score'] / daily[date_key]['rated']
 
-        processor = MeasureProcessor(current_region)
+        # If bottle or can, set parser region by manufacturer
+        if checkin['serving_type'] and checkin['serving_type'] in ['Can', 'Bottle'] and checkin['brewery_country']:
+            if checkin['brewery_country'] == 'United States':
+                checkin_region = Region.USA
+            else:
+                checkin_region = Region.EUROPE
+
+            debug_print(f"Container manufacturer region: {current_region}")
+
+        else:  # Otherwise, base it on location if available
+            last_region = current_region
+            if checkin['venue_country']:
+                if checkin['venue_country'] == 'United States':
+                    current_region = Region.USA
+                else:
+                    current_region = Region.EUROPE
+                debug_print(f"Checkin region: {current_region}")
+
+            if last_region != current_region:
+                debug_print(f"** Switched region to {current_region}")
+
+            checkin_region = current_region
+
+        processor = MeasureProcessor(checkin_region)
 
         measure = processor.measure_from_comment(checkin['comment'])
         if measure is None:
