@@ -50,13 +50,13 @@ if [[ "${DO_VALIDATE}" == "1" ]]; then
 
     echo "Validating source code…"
     set +e
-    eval "./venv/bin/flake8 --ignore E501 ${SOURCE_FILES}"
+    eval "./venv/bin/flake8 --ignore E501 ${SOURCE_FILES} && ./venv/bin/isort -c"
     VALIDATE_RESULT="$?"
     set -e
     if [[ "$VALIDATE_RESULT" == "0" ]]; then
         echo " … Validation passed"
     else
-        echo " … Validation failed; return value = $VALIDATE_RESULT"
+        echo " … Validation failed"
         exit 1
     fi
 fi

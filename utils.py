@@ -1,7 +1,9 @@
-from typing import Optional, TextIO
 import csv
 import re
+from typing import Optional, TextIO
+
 import requests
+
 
 try:
     from config import config

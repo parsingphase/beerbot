@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 
 import argparse
-import sys
 import json
-from bot_version import version
+import sys
 from datetime import date, datetime
+from typing import List, TextIO
+
 from dateutil.relativedelta import relativedelta
-from typing import TextIO, List
-from utils import file_contents, build_csv_from_list
+
+from bot_version import version
+from utils import build_csv_from_list, file_contents
 
 
 def generate_stocklist_files(source_data: list, stocklist_output: TextIO = None, styles_output: TextIO = None) -> None:

@@ -2,12 +2,14 @@
 
 import argparse
 import csv
-import sys
 import json
+import sys
 from datetime import timedelta
-from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
-from measures import Region, MeasureProcessor
 from typing import TextIO
+
+from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
+
+from measures import MeasureProcessor, Region
 from utils import debug_print, file_contents, filter_source_data
 
 

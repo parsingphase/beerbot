@@ -18,6 +18,12 @@ class Measure:
 
 
 class MeasureProcessor:
+    """
+    MeasureProcessor: Convert a human-readable measure in a comment into ml
+
+    Complicated somewhat by the differing sizes of pints, ounces in the USA and the rest of the world.
+    So, we accept an input that says if we're in US or elsewhere (currently defined as "Europe")
+    """
     DEFAULT_SERVING_SIZES = {
         Region.EUROPE: {
             'draft': Measure.PINT_UK / 2,  # Some personal preference here

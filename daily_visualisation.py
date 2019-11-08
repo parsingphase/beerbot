@@ -3,10 +3,10 @@
 import argparse
 import json
 import sys
-
-from svg_calendar import draw_daily_count_image
-from imbibed import build_checkin_summaries
 from math import floor
+
+from imbibed import build_checkin_summaries
+from svg_calendar import draw_daily_count_image
 from utils import file_contents, filter_source_data
 
 
