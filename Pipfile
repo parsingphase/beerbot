@@ -7,10 +7,10 @@ name = "pypi"
 python-dateutil = "*"
 requests = ">=2.20.0"
 svgwrite = ">=1.2.1"
-isort = "*"
 
 [dev-packages]
-"flake8" = "*"
+flake8 = "*"
+isort = "*"
 
 [requires]
 python_version = "3.7"
