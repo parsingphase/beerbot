@@ -4,9 +4,9 @@ python:
   - "3.7"
   - "3.7-dev"  # 3.7 development branch
 # command to install dependencies
-#install:
-#  - 'pip install pipenv'
-#  - 'pipenv --dev install'
+install:
+  - 'pip install pipenv'
+  - 'pipenv install --dev'
 # command to run tests
 script:
   - make install travis_test
