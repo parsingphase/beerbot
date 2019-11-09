@@ -67,7 +67,7 @@ class MeasureProcessor:
             self.units['ounce'] = Measure.OUNCE_UK
             self.units['oz'] = Measure.OUNCE_UK
 
-    def parse_measure(self, measure_string: str) -> int:
+    def parse_measure(self, measure_string: str) -> Optional[int]:
         """
         Read a measure as recorded in the comment field and parse it into a number of millilitres
         Args:
@@ -127,7 +127,7 @@ class MeasureProcessor:
         """
         serving = serving.lower()
         defaults = self.DEFAULT_SERVING_SIZES[self.region]
-        drink_measure = defaults[serving] if serving in defaults else None
+        drink_measure = int(defaults[serving]) if serving in defaults else None
         return drink_measure
 
     def measure_from_comment(self, comment: str) -> Optional[int]:

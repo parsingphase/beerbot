@@ -23,17 +23,20 @@ def file_contents(file_path: str, verbose: bool = False) -> Optional[str]:
         File contents as string
     """
 
+    contents = ''
     match = re.match('^(f|ht)tp(s?)://', file_path)
     if match:
         if verbose:
             print("Fetch from URL")
         r = requests.get(file_path)
-        contents = r.content.decode('utf-8')  # string
+        contents = r.content.decode('utf-8')
     else:
         if verbose:
             print("Load from file")
         with open(file_path, 'r') as f:
-            contents = f.readlines()
+            lines = f.readlines()
+            if lines:
+                contents = ''.join(lines)
 
     if contents and verbose:
         print(contents)

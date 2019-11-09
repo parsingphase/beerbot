@@ -5,7 +5,7 @@ import csv
 import json
 import sys
 from datetime import timedelta
-from typing import TextIO
+from typing import Dict, Optional, TextIO
 
 from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
 
@@ -59,10 +59,10 @@ def analyze_checkins(
     Returns:
 
     """
-    daily = {} if daily_output else None
-    weekly = {} if weekly_output else None
-    styles = {} if styles_output else None
-    breweries = {} if brewery_output else None
+    daily = {} if daily_output else None  # type: Optional[Dict]
+    weekly = {} if weekly_output else None  # type: Optional[Dict]
+    styles = {} if styles_output else None  # type: Optional[Dict]
+    breweries = {} if brewery_output else None  # type: Optional[Dict]
 
     build_checkin_summaries(source_data, daily, weekly, styles, breweries)
 
@@ -219,6 +219,9 @@ def build_checkin_summaries(
                 if beer_name not in breweries[brewery_name]['rated_beers']:
                     breweries[brewery_name]['rated_beers'][beer_name] = []
                 breweries[brewery_name]['rated_beers'][beer_name].append(float(checkin['rating_score']))
+
+    if not first_date or not last_date:  # Be explicit for the benefit of MyPy
+        raise Exception('No dated checkins found')
 
     if weekly is not None:
         # Gather weeks
