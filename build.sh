@@ -2,7 +2,7 @@
 
 set -e
 
-SOURCE_FILES="lambda_function.py stock_check.py imbibed.py utils.py daily_visualisation.py"
+SOURCE_FILES="lambda_function.py stock_check.py imbibed.py utils.py daily_visualisation.py measures.py svg_calendar"
 AWSREGION="eu-west-1"
 LAMBDA_NAME="receiveBeerBotMail"
 
@@ -69,7 +69,7 @@ echo " Working in ${TMP_DIR}"
 rm -rf "${BUILD_DIR}/lambda.zip" "${BUILD_DIR}/lambda"
 
 for file in ${SOURCE_FILES}; do
-    cp ${file} "${TMP_DIR}"
+    cp -r ${file} "${TMP_DIR}"
 done
 
 if [[ -e config.py ]]; then
