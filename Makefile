@@ -2,16 +2,19 @@
 
 SHELL := /bin/bash
 
-.PHONY: check_virtualenv install test
+.PHONY: check_virtualenv install test travis_test
 
-test:
+travis_test:
 	python -m flake8 -v --exclude=.idea,.git,venv
-	python -m isort -c
 	python -m mypy imbibed.py
 	python -m mypy --ignore-missing-imports daily_visualisation.py
 		#FIXME: find a better fix for ' error: Cannot find module named 'svgwrite' '
 	python -m mypy stock_check.py
 	pylint imbibed.py daily_visualisation.py stock_check.py
+
+test: travis_test
+	python -m isort -c
+	# isort behaves differently under travis, so don't run it there
 
 check_virtualenv:
 	pipenv --venv
