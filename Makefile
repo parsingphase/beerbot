@@ -10,7 +10,7 @@ travis_test:
 	python -m mypy --ignore-missing-imports daily_visualisation.py
 		#FIXME: find a better fix for ' error: Cannot find module named 'svgwrite' '
 	python -m mypy stock_check.py
-	pylint imbibed.py daily_visualisation.py stock_check.py
+	pylint -d R0801 imbibed.py daily_visualisation.py stock_check.py
 
 test: travis_test
 	python -m isort -c

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-
+"""
+Generate a visualisation grid of daily consumption data. Run with --help for details
+"""
 import argparse
 import json
 import sys
@@ -11,6 +13,11 @@ from utils import file_contents, filter_source_data
 
 
 def run_cli():
+    """
+    Command-line runner
+    Returns:
+        void
+    """
     args = parse_cli_args()
     source = args.source
     dest = args.output
@@ -62,6 +69,12 @@ def build_daily_visualisation_image(daily_summary: dict, measure: str, show_lege
 
 
 def parse_cli_args():
+    """
+    Specify and parse command-line arguments
+
+    Returns:
+        Namespace of provided arguments
+    """
     parser = argparse.ArgumentParser(
         description='Visualise consumption of alcoholic drinks from an Untappd JSON export file',
         usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--drinks|--units] [--legend] [--filter=…] [--help]',

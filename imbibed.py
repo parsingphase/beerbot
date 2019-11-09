@@ -19,8 +19,8 @@ def parse_cli_args() -> argparse.Namespace:
     """
     Specify and parse command-line arguments
 
-    Returns: Namespace of provided arguments
-
+    Returns:
+        Namespace of provided arguments
     """
     parser = argparse.ArgumentParser(
         description='Analyse consumption of alcoholic drinks from an Untappd JSON export file',
