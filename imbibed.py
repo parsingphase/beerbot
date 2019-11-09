@@ -110,7 +110,6 @@ def build_checkin_summaries(
         first_country = next(c['brewery_country'] for c in source_data if c['brewery_country'])
 
     current_region = Region.USA if first_country == 'United States' else Region.EUROPE
-    # FIXME check the first checkin location and use that as the default
     debug_print(f"Default region: {current_region}")
 
     # We need this to build with, even if we don't return it

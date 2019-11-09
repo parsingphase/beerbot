@@ -9,4 +9,4 @@ python:
 #  - 'pipenv --dev install'
 # command to run tests
 script:
-  - python -m flake8 -v
+  - make install test
