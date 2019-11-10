@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-
+"""
+Analyze stock data. Run from cli with --help for details.
+"""
 import argparse
 import json
 import sys
 from datetime import date, datetime
-from typing import List, TextIO
+from typing import Dict, List, Optional, TextIO
 
 from dateutil.relativedelta import relativedelta
 
@@ -21,15 +23,15 @@ def generate_stocklist_files(source_data: list, stocklist_output: TextIO = None,
         stocklist_output: buffer to write stock list to
         styles_output: buffer to write styles summary to
     """
-    stocklist = [] if stocklist_output else None
-    style_summary = [] if styles_output else None
+    stocklist = [] if stocklist_output else None  # type: Optional[List]
+    style_summary = [] if styles_output else None  # type: Optional[List]
 
     build_stocklists(source_data, stocklist=stocklist, style_summary=style_summary)
 
-    if stocklist_output:
+    if stocklist_output and stocklist is not None:
         build_csv_from_list(stocklist, stocklist_output)
 
-    if styles_output:
+    if styles_output and style_summary is not None:
         build_csv_from_list(style_summary, styles_output)
 
 
@@ -45,6 +47,7 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
     Returns:
 
     """
+    # pylint: disable=R0912,R0914
     thresholds = [
         {'description': 'Undated beers', 'ends': '0000-00-00'},
         {'description': 'Expired beers', 'ends': date.today().strftime('%Y-%m-%d')},
@@ -52,8 +55,8 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
         {'description': 'Within two months', 'ends': (date.today() + relativedelta(months=+2)).strftime('%Y-%m-%d')},
         {'description': 'More than two months away'}
     ]
-    expiry_sets = [{} for _ in range(len(thresholds))]
-    styles = {}
+    expiry_sets = [{} for _ in range(len(thresholds))]  # type: List[Dict]
+    styles = {}  # type: Dict
     list_has_quantities = False
 
     for item in source_data:
@@ -86,7 +89,7 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
 
         stocklist.append(['Expiry', 'Type', '#', 'Brewery', 'Beverage', 'Subtype', 'ABV', 'Serving', 'BBE'])
         for k, expiry_set in enumerate(expiry_sets):
-            if len(expiry_sets[k]):
+            if expiry_sets[k]:
                 distinct_beer_count = sum([sum([1 for d in expiry_set[style]]) for style in expiry_set])
                 if list_has_quantities:
                     quantity = sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set])
@@ -226,7 +229,7 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
 
     first = True
     for row in stocklist:
-        if not len(''.join(row)):
+        if not ''.join(row):  # If anything in line
             continue
 
         if len(row) == 1:

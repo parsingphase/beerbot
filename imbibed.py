@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
-
+"""
+Parse an UNtappd JSON export of beers checked in. Run with --help for command-line operation or see README
+"""
 import argparse
 import csv
 import json
 import sys
 from datetime import timedelta
-from typing import TextIO
+from typing import Dict, Optional, TextIO
 
 from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
 
 from measures import MeasureProcessor, Region
-from utils import debug_print, file_contents, filter_source_data
+from utils import file_contents, filter_source_data
 
 
-def parse_cli_args():
+def parse_cli_args() -> argparse.Namespace:
+    """
+    Specify and parse command-line arguments
+
+    Returns:
+        Namespace of provided arguments
+    """
     parser = argparse.ArgumentParser(
         description='Analyse consumption of alcoholic drinks from an Untappd JSON export file',
         usage=sys.argv[0] + ' SOURCE [--output OUTPUT] [--weekly|--daily|--style|--brewery] [--filter=…] [--help]',
@@ -59,23 +67,23 @@ def analyze_checkins(
     Returns:
 
     """
-    daily = {} if daily_output else None
-    weekly = {} if weekly_output else None
-    styles = {} if styles_output else None
-    breweries = {} if brewery_output else None
+    daily = {} if daily_output else None  # type: Optional[Dict]
+    weekly = {} if weekly_output else None  # type: Optional[Dict]
+    styles = {} if styles_output else None  # type: Optional[Dict]
+    breweries = {} if brewery_output else None  # type: Optional[Dict]
 
     build_checkin_summaries(source_data, daily, weekly, styles, breweries)
 
-    if weekly_output:
+    if weekly and weekly_output:
         write_weekly_summary(weekly, weekly_output)
 
-    if daily_output:
+    if daily and daily_output:
         write_daily_summary(daily, daily_output)
 
-    if styles_output:
+    if styles and styles_output:
         write_styles_summary(styles, styles_output)
 
-    if brewery_output:
+    if breweries and brewery_output:
         write_breweries_summary(breweries, brewery_output)
 
 
@@ -97,8 +105,11 @@ def build_checkin_summaries(
         breweries: dict to populate with brewery data
 
     Returns:
-
+        No return value - results are passed back by reference
     """
+    # pylint: disable=R0914,R0912,R0915
+    # Data-gathering function is inherently noisy - can we simplify without doing things twice?
+
     first_date = None
     last_date = None
 
@@ -110,8 +121,6 @@ def build_checkin_summaries(
         first_country = next(c['brewery_country'] for c in source_data if c['brewery_country'])
 
     current_region = Region.USA if first_country == 'United States' else Region.EUROPE
-    # FIXME check the first checkin location and use that as the default
-    debug_print(f"Default region: {current_region}")
 
     # We need this to build with, even if we don't return it
     if daily is None:
@@ -150,19 +159,12 @@ def build_checkin_summaries(
             else:
                 checkin_region = Region.EUROPE
 
-            debug_print(f"Container manufacturer region: {current_region}")
-
         else:  # Otherwise, base it on location if available
-            last_region = current_region
             if checkin['venue_country']:
                 if checkin['venue_country'] == 'United States':
                     current_region = Region.USA
                 else:
                     current_region = Region.EUROPE
-                debug_print(f"Checkin region: {current_region}")
-
-            if last_region != current_region:
-                debug_print(f"** Switched region to {current_region}")
 
             checkin_region = current_region
 
@@ -219,6 +221,9 @@ def build_checkin_summaries(
                 if beer_name not in breweries[brewery_name]['rated_beers']:
                     breweries[brewery_name]['rated_beers'][beer_name] = []
                 breweries[brewery_name]['rated_beers'][beer_name].append(float(checkin['rating_score']))
+
+    if not first_date or not last_date:  # Be explicit for the benefit of MyPy
+        raise Exception('No dated checkins found')
 
     if weekly is not None:
         # Gather weeks
@@ -284,7 +289,17 @@ def build_checkin_summaries(
             next_monday += timedelta(weeks=1)
 
 
-def write_weekly_summary(weekly, weekly_output):
+def write_weekly_summary(weekly: Dict, weekly_output: TextIO):
+    """
+    Write the collected 'weekly' data as CSV to the provided output buffer
+
+    Args:
+        weekly: Map of week number => data
+        weekly_output: TextIo buffer to write to
+
+    Returns:
+        Void
+    """
     weekly_writer = csv.writer(weekly_output)
     keys = ['drinks', 'average_score', 'beverage_ml', 'alcohol_ml', 'units', 'dry_days', 'estimated']
     output_row = ['week', 'commencing'] + keys
@@ -306,7 +321,17 @@ def write_weekly_summary(weekly, weekly_output):
         weekly_writer.writerow(output_row)
 
 
-def write_daily_summary(daily, daily_output):
+def write_daily_summary(daily: Dict, daily_output: TextIO):
+    """
+    Write the collected 'daily' data as CSV to the provided output buffer
+
+    Args:
+        daily: Map of date => data
+        daily_output: TextIo buffer to write to
+
+    Returns:
+        Void
+    """
     keys = ['drinks', 'average_score', 'beverage_ml', 'alcohol_ml', 'units', 'estimated', ]
     daily_writer = csv.writer(daily_output)
     output_row = ['date'] + keys
@@ -327,7 +352,18 @@ def write_daily_summary(daily, daily_output):
         daily_writer.writerow(output_row)
 
 
-def write_styles_summary(styles, styles_output):
+def write_styles_summary(styles: Dict, styles_output: TextIO):
+    """
+    Write the collected 'styles' data as CSV to the provided output buffer
+
+    Args:
+        styles: Map of style => data
+        styles_output: TextIo buffer
+
+    Returns:
+        Void
+
+    """
     style_list = []
     style_totals = {'count': 0, 'rated': 0, 'total_score': 0}
     for style in styles:
@@ -359,20 +395,31 @@ def write_styles_summary(styles, styles_output):
 
 
 def write_breweries_summary(breweries, brewery_output):
-    for brewery_name in breweries:
-        if breweries[brewery_name]['rated']:
-            breweries[brewery_name]['average_score'] = \
-                round(breweries[brewery_name]['total_score'] / breweries[brewery_name]['rated'], 2)
-            for b in breweries[brewery_name]['rated_beers']:
-                breweries[brewery_name]['unique_rated'] += 1
-                breweries[brewery_name]['unique_total_score'] += \
-                    sum(breweries[brewery_name]['rated_beers'][b]) / len(breweries[brewery_name]['rated_beers'][b])
+    """
+    Write the collected 'breweries' data as CSV to the provided output buffer
+
+    Args:
+        breweries: Map of brewery => data
+        breweries_output: TextIo buffer
+
+    Returns:
+        Void
+
+    """
+    for brewery in breweries:
+        if breweries[brewery]['rated']:
+            breweries[brewery]['average_score'] = \
+                round(breweries[brewery]['total_score'] / breweries[brewery]['rated'], 2)
+            for beer in breweries[brewery]['rated_beers']:
+                breweries[brewery]['unique_rated'] += 1
+                breweries[brewery]['unique_total_score'] += \
+                    sum(breweries[brewery]['rated_beers'][beer]) / len(breweries[brewery]['rated_beers'][beer])
                 # Add the *average score for this beer's checkins* to the unique total score
-            breweries[brewery_name]['unique_average_score'] = \
-                round(breweries[brewery_name]['unique_total_score'] / breweries[brewery_name]['unique_rated'], 2)
+            breweries[brewery]['unique_average_score'] = \
+                round(breweries[brewery]['unique_total_score'] / breweries[brewery]['unique_rated'], 2)
         else:
-            breweries[brewery_name]['average_score'] = ''
-            breweries[brewery_name]['unique_average_score'] = ''
+            breweries[brewery]['average_score'] = ''
+            breweries[brewery]['unique_average_score'] = ''
 
     brewery_list = list(breweries.values())
     brewery_list.sort(
@@ -389,6 +436,11 @@ def write_breweries_summary(breweries, brewery_output):
 
 
 def run_cli():
+    """
+    Run the parser at the command line. Run with --help for details
+    Returns:
+        Void
+    """
     args = parse_cli_args()
     source = args.source
     dest = args.output
