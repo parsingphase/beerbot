@@ -12,7 +12,7 @@ from typing import Dict, Optional, TextIO
 from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
 
 from measures import MeasureProcessor, Region
-from utils import debug_print, file_contents, filter_source_data
+from utils import file_contents, filter_source_data
 
 
 def parse_cli_args() -> argparse.Namespace:
@@ -121,7 +121,6 @@ def build_checkin_summaries(
         first_country = next(c['brewery_country'] for c in source_data if c['brewery_country'])
 
     current_region = Region.USA if first_country == 'United States' else Region.EUROPE
-    debug_print(f"Default region: {current_region}")
 
     # We need this to build with, even if we don't return it
     if daily is None:
@@ -160,19 +159,12 @@ def build_checkin_summaries(
             else:
                 checkin_region = Region.EUROPE
 
-            debug_print(f"Container manufacturer region: {current_region}")
-
         else:  # Otherwise, base it on location if available
-            last_region = current_region
             if checkin['venue_country']:
                 if checkin['venue_country'] == 'United States':
                     current_region = Region.USA
                 else:
                     current_region = Region.EUROPE
-                debug_print(f"Checkin region: {current_region}")
-
-            if last_region != current_region:
-                debug_print(f"** Switched region to {current_region}")
 
             checkin_region = current_region
 
