@@ -11,6 +11,7 @@ travis_test:
 		#FIXME: find a better fix for ' error: Cannot find module named 'svgwrite' '
 	python -m mypy stock_check.py
 	pylint -d R0801 imbibed.py daily_visualisation.py stock_check.py
+	python tests.py
 
 test: travis_test
 	python -m isort -c
