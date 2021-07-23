@@ -5,8 +5,10 @@ Analyze stock data. Run from cli with --help for details.
 import argparse
 import json
 import sys
+from abc import ABC, abstractmethod
 from datetime import date, datetime
-from typing import Dict, List, Optional, TextIO
+from typing import Dict, List, Optional, TextIO, Union
+from urllib.parse import quote as quote_url
 
 from dateutil.relativedelta import relativedelta
 
@@ -14,7 +16,46 @@ from bot_version import version
 from utils import build_csv_from_list, file_contents
 
 
-def generate_stocklist_files(source_data: list, stocklist_output: TextIO = None, styles_output: TextIO = None) -> None:
+class TaggedText(ABC):
+    """
+    Abstract class for data that can act as string or html
+    """
+    @abstractmethod
+    def to_string(self) -> str:
+        """
+        Return string representation of the data
+        """
+
+    @abstractmethod
+    def to_html(self) -> str:
+        """
+        Return html representation of the data
+        """
+
+    def __str__(self) -> str:
+        """
+        Return string representation of the data by casting
+        """
+        return self.to_string()
+
+
+class LinkedText(TaggedText):
+    """
+    Tagged data that can display as <a href> link or plain text
+    """
+    def __init__(self, text: str, url: str):
+        self.text = text
+        self.url = url
+
+    def to_string(self) -> str:
+        return self.text
+
+    def to_html(self) -> str:
+        return f'<a href="{self.url}">{self.text}</a>' if self.url else self.text
+
+
+def generate_stocklist_files(source_data: list, stocklist_output: TextIO = None,
+                             styles_output: TextIO = None) -> None:
     """
     Convert the parsed JSON from a list feed into a CSV reporting stock levels and expiry
 
@@ -90,7 +131,7 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
         stocklist.append(['Expiry', 'Type', '#', 'Brewery', 'Beverage', 'Subtype', 'ABV', 'Serving', 'BBE'])
         for k, expiry_set in enumerate(expiry_sets):
             if expiry_sets[k]:
-                distinct_beer_count = sum([sum([1 for d in expiry_set[style]]) for style in expiry_set])
+                distinct_beer_count = sum([sum([1 for _ in expiry_set[style]]) for style in expiry_set])
                 if list_has_quantities:
                     quantity = sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set])
                     stocklist.append(
@@ -122,13 +163,15 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
                     drinks.sort(key=lambda d: (d['brewery_name'], d['beer_name']))
                     for item in drinks:
                         bbd = item.get('best_by_date_iso', '')
+                        url = 'https://untappd.com/search?q='
+                        url = url + quote_url(item["brewery_name"] + ' ' + item["beer_name"])
                         stocklist.append(
                             [
                                 '',
                                 style if first else '',
                                 item.get('quantity', ''),
                                 item['brewery_name'],
-                                item['beer_name'],
+                                LinkedText(item['beer_name'], url),
                                 item['beer_type'],
                                 '%.1f%%' % float(item['beer_abv']),
                                 item.get('container', ''),
@@ -194,7 +237,8 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
 
     """
 
-    def wrap(contents: str, tag: str):
+    def wrap(contents: Union[str, TaggedText], tag: str):
+        contents = contents.to_html() if isinstance(contents, TaggedText) else contents
         return '<%s>%s</%s>' % (tag, contents, tag)
 
     date_format = '%B %-d %Y'
@@ -216,7 +260,7 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
             th { background-color: #eee; text-align: left; padding: 6px }
             tr:first-child th {background-color: #ddd;}
             td { text-align: left; padding: 2 6px; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; }
-            a { color: #000 }
+            a, a:link { color: #000; text-decoration: none }
             p.attribution { text-align: right; padding-right: 40px }
         </style>
         </head>
@@ -229,7 +273,7 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
 
     first = True
     for row in stocklist:
-        if not ''.join(row):  # If anything in line
+        if not ''.join([str(i) for i in row]):  # If anything in line
             continue
 
         if len(row) == 1:

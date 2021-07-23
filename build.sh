@@ -15,7 +15,7 @@ for arg in "$@"; do
         "--docs")
             DO_BUILD_DOCS=1;;
         *)
-            echo "Invalid argument ${arg}. Valid options are --validate, --upload"
+            echo "Invalid argument ${arg}. Valid options are --validate, --upload, --docs"
             exit 1
     esac
 done
