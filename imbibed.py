@@ -9,7 +9,7 @@ import sys
 from datetime import timedelta
 from typing import Dict, Optional, TextIO
 
-from dateutil.parser import parse as parse_date  # pipenv install  python-dateutil
+from dateutil.parser import parse as parse_date
 
 from measures import MeasureProcessor, Region
 from utils import file_contents, filter_source_data
@@ -451,7 +451,8 @@ def run_cli():
         source_data = filter_source_data(filter_strings, source_data)
 
     if dest:
-        output_handle = open(dest, 'w')
+        # R1732 wants a 'with' here. Can't do that neatly with 2 potential opens
+        output_handle = open(dest, 'w')  # pylint: disable=consider-using-with
     else:
         output_handle = sys.stdout
 

@@ -14,7 +14,7 @@ travis_test:
 	python tests.py
 
 test: travis_test
-	python -m isort -c
+	python -m isort -c .
 	# isort behaves differently under travis, so don't run it there
 
 check_virtualenv:

@@ -13,14 +13,14 @@ from hashlib import sha256
 from io import StringIO
 from typing import List, Optional
 
-import requests
-
 import boto3
+import requests
+from botocore.exceptions import ClientError
+
 import daily_visualisation
 import imbibed
 import stock_check
 from bot_version import version
-from botocore.exceptions import ClientError
 from utils import build_csv_from_list, debug_print, get_config
 
 

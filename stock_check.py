@@ -20,6 +20,7 @@ class TaggedText(ABC):
     """
     Abstract class for data that can act as string or html
     """
+
     @abstractmethod
     def to_string(self) -> str:
         """
@@ -43,6 +44,7 @@ class LinkedText(TaggedText):
     """
     Tagged data that can display as <a href> link or plain text
     """
+
     def __init__(self, text: str, url: str):
         self.text = text
         self.url = url
@@ -195,8 +197,8 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
 
     if style_summary is not None:
         style_list = []
-        for style in styles:
-            style_list.append({'style': style, 'count': styles[style]})
+        for style, style_count in styles.items():
+            style_list.append({'style': style, 'count': style_count})
         style_list.sort(key=lambda b: (0 if b['count'] is None else (0 - b['count']), b['style']))
         style_summary.append(['Styles'])
         for style_row in style_list:
@@ -321,7 +323,8 @@ def run_cli():
     source = args.source
     dest = args.output
     if dest:
-        output_handle = open(dest, 'w')
+        # R1732 wants a 'with' here. Can't do that neatly with 2 potential opens
+        output_handle = open(dest, 'w')  # pylint: disable=consider-using-with
     else:
         output_handle = sys.stdout
 
