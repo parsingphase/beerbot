@@ -15,3 +15,5 @@ docs/_site
 config.py
 resources
 .mypy_cache
+docs/vendor
+docs/.bundle
