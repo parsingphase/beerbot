@@ -1,7 +1,7 @@
 ---
 ---
 
-@import "{{ site.theme }}";
+@import "jekyll-theme-dinky";
 
 header ul.nav li {
     margin-bottom: 0px;
@@ -28,3 +28,4 @@ section.footer {
     border-top: 2px solid #ddd;
     font-style: italic;
 }
+
