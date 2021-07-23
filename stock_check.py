@@ -7,7 +7,7 @@ import json
 import sys
 from abc import ABC, abstractmethod
 from datetime import date, datetime
-from typing import Dict, List, Optional, TextIO, Union
+from typing import Dict, List, Optional, TextIO, Union, TypedDict, Any
 from urllib.parse import quote as quote_url
 
 from dateutil.relativedelta import relativedelta
@@ -15,11 +15,27 @@ from dateutil.relativedelta import relativedelta
 from bot_version import version
 from utils import build_csv_from_list, file_contents
 
+StocklistItem = TypedDict(
+    'StocklistItem',
+    {
+        "style": str,
+        "quantity": Optional[int],
+        "brewery_name": str,
+        "beer_name": str,
+        "beer_name_link": str,
+        "beer_type": str,
+        "beer_abv": Any,  # Fixed format STR at the moment
+        "container": Optional[str],
+        "best_by_date_iso": Optional[str]
+    }
+)
+
 
 class TaggedText(ABC):
     """
     Abstract class for data that can act as string or html
     """
+
     @abstractmethod
     def to_string(self) -> str:
         """
@@ -43,6 +59,7 @@ class LinkedText(TaggedText):
     """
     Tagged data that can display as <a href> link or plain text
     """
+
     def __init__(self, text: str, url: str):
         self.text = text
         self.url = url
@@ -99,6 +116,7 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
     expiry_sets = [{} for _ in range(len(thresholds))]  # type: List[Dict]
     styles = {}  # type: Dict
     list_has_quantities = False
+    any_beers_expire = False
 
     for item in source_data:
         style = item['beer_type'].split(' -')[0].strip()
@@ -114,6 +132,8 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
 
         # Strictly only needed for full stocklist
         due = item.get('best_by_date_iso', '0000-00-00')
+        if due != '0000-00-00':
+            any_beers_expire = True
         for idx, threshold in enumerate(thresholds):
             if 'ends' in threshold and due <= threshold['ends']:
                 if style not in expiry_sets[idx]:
@@ -132,29 +152,30 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
         for k, expiry_set in enumerate(expiry_sets):
             if expiry_sets[k]:
                 distinct_beer_count = sum([sum([1 for _ in expiry_set[style]]) for style in expiry_set])
-                if list_has_quantities:
-                    quantity = sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set])
-                    stocklist.append(
-                        [
-                            '%s: %d %s of %d %s' % (
-                                thresholds[k]['description'],
-                                quantity,
-                                plural('item', quantity),
-                                distinct_beer_count,
-                                plural('beer', distinct_beer_count),
-                            )
-                        ]
-                    )
-                else:
-                    stocklist.append(
-                        [
-                            '%s: %d %s' % (
-                                thresholds[k]['description'],
-                                distinct_beer_count,
-                                plural('beer', distinct_beer_count),
-                            )
-                        ]
-                    )
+                if any_beers_expire:
+                    if list_has_quantities:
+                        quantity = sum([sum([int(d['quantity']) for d in expiry_set[style]]) for style in expiry_set])
+                        stocklist.append(
+                            [
+                                '%s: %d %s of %d %s' % (
+                                    thresholds[k]['description'],
+                                    quantity,
+                                    plural('item', quantity),
+                                    distinct_beer_count,
+                                    plural('beer', distinct_beer_count),
+                                )
+                            ]
+                        )
+                    else:
+                        stocklist.append(
+                            [
+                                '%s: %d %s' % (
+                                    thresholds[k]['description'],
+                                    distinct_beer_count,
+                                    plural('beer', distinct_beer_count),
+                                )
+                            ]
+                        )
 
                 # Sort styles by name
                 for style in sorted(expiry_sets[k]):
@@ -165,18 +186,22 @@ def build_stocklists(source_data: list, stocklist: list = None, style_summary: l
                         bbd = item.get('best_by_date_iso', '')
                         url = 'https://untappd.com/search?q='
                         url = url + quote_url(item["brewery_name"] + ' ' + item["beer_name"])
+                        # FIXME this is going to have to be a DICT to process it sensibly
+                        # Rows that don't contain categorised data should just be a single string?
+                        # Or do we want to export as pure JSON with sections & headers?
+                        row: StocklistItem = {
+                            'style': style if first else '',
+                            'quantity': item.get('quantity', None),
+                            'brewery_name': item['brewery_name'],
+                            'beer_name': item['beer_name'],
+                            'beer_name_link': url,
+                            'beer_type': item['beer_type'],
+                            'beer_abv': '%.1f%%' % float(item['beer_abv']),
+                            'container': item.get('container', ''),
+                            'best_by_date_iso': bbd if bbd != '0000-00-00' else '',
+                        }
                         stocklist.append(
-                            [
-                                '',
-                                style if first else '',
-                                item.get('quantity', ''),
-                                item['brewery_name'],
-                                LinkedText(item['beer_name'], url),
-                                item['beer_type'],
-                                '%.1f%%' % float(item['beer_abv']),
-                                item.get('container', ''),
-                                bbd if bbd != '0000-00-00' else '',
-                            ]
+                            row
                         )
                         first = False
 
