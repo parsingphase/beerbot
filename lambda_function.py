@@ -60,7 +60,9 @@ def lambda_handler(event, context):
                         subject = headers['subject'] if 'subject' in headers else ''
                         subject_match = re.search(r'List:\s*(\w.*)', subject)
                         list_name = subject_match[1]
-                        process_list_export(loaded_data, reply_to,list_name)
+                        if list_name:
+                            list_name = list_name.strip()
+                        process_list_export(loaded_data, reply_to, list_name)
 
                     elif export_type == EXPORT_TYPE_CHECKINS:
                         process_checkins_export(loaded_data, reply_to)
@@ -151,6 +153,7 @@ def process_list_export(loaded_data: list, reply_to: str, list_name: str = None)
     Process loaded list export data to create an email containing appropriate reports, and an uploaded HTML version
 
     Args:
+        list_name: Optional list name to store under
         loaded_data: Unpacked JSON data
         reply_to: Address email was submitted from
 
@@ -178,7 +181,7 @@ def process_list_export(loaded_data: list, reply_to: str, list_name: str = None)
     del stocklist_buffer_csv
     del styles_buffer_csv
     stocklist_buffer_html = StringIO()
-    stock_check.build_html_from_list(stocklist, stocklist_buffer_html)
+    stock_check.build_html_from_list(stocklist, stocklist_buffer_html, list_name)
     uploaded_to = upload_report_to_s3(
         stocklist_buffer_html,
         filename='sl' if list_name is None else list_name,
@@ -228,9 +231,10 @@ def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str, ex
             Expires=expires,
             Tagging='ReportType=Stocklist',
         )
-        invalidate_path_cache('/' + relative_path)
-        destination = upload_web_root + relative_path
-        debug_print('Upload to %s, expiry %s' % (relative_path, expires))
+        url_path = relative_path.replace(' ', '+')
+        invalidate_path_cache('/' + url_path)
+        destination = upload_web_root + url_path
+        debug_print('Upload to s3: %s, url: %s, expiry %s' % (relative_path, url_path, expires))
     else:
         print('No upload dest specified, so no HTML storage')
 

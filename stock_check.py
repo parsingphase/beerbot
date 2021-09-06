@@ -254,6 +254,8 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO, title:
     else:
         list_name = title
 
+    print({'build_html_from_list': {'title': title}})
+
     stocklist_output.write(
         """<html><head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
