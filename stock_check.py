@@ -227,11 +227,12 @@ def parse_cli_args() -> argparse.Namespace:
     return args
 
 
-def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
+def build_html_from_list(stocklist: List[list], stocklist_output: TextIO, title: str = None):
     """
     Create HTML table from Stocklist
 
     Args:
+        title: Optional title
         stocklist: Summarised data
         stocklist_output: Buffer for HTML output
 
@@ -247,10 +248,16 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
     # date_format += ' %X'
     today = datetime.now().strftime(date_format)
 
+    if title is None:
+        title = "Stocklist"
+        list_name = "List"
+    else:
+        list_name = title
+
     stocklist_output.write(
         """<html><head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-        <title>Stocklist</title>
+        <title>%s</title>
         <style type="text/css" media="all">
             body { font-family: "Helvetica Neue", "Helvetica", sans-serif; }
             div.container { padding: 20px 40px; }
@@ -268,9 +275,9 @@ def build_html_from_list(stocklist: List[list], stocklist_output: TextIO):
         </head>
         <body>
             <div class="container">
-            <h1>Stocklist generated %s by <a href="https://beerbot.phase.org">Beerbot</a></h1>
+            <h1>%s generated %s by <a href="https://beerbot.phase.org">Beerbot</a></h1>
             <table>
-            """ % today
+            """ % (title, list_name, today)
     )
 
     first = True

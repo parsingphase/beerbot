@@ -57,7 +57,10 @@ def lambda_handler(event, context):
                     loaded_data = json.loads(export_data)
 
                     if export_type == EXPORT_TYPE_LIST:
-                        process_list_export(loaded_data, reply_to)
+                        subject = headers['subject'] if 'subject' in headers else ''
+                        subject_match = re.search(r'List:\s*(\w.*)', subject)
+                        list_name = subject_match[1]
+                        process_list_export(loaded_data, reply_to,list_name)
 
                     elif export_type == EXPORT_TYPE_CHECKINS:
                         process_checkins_export(loaded_data, reply_to)
@@ -143,7 +146,7 @@ def process_checkins_export(loaded_data: list, reply_to: str):
     send_email_response(reply_to, body, attachments)
 
 
-def process_list_export(loaded_data: list, reply_to: str):
+def process_list_export(loaded_data: list, reply_to: str, list_name: str = None):
     """
     Process loaded list export data to create an email containing appropriate reports, and an uploaded HTML version
 
@@ -178,7 +181,7 @@ def process_list_export(loaded_data: list, reply_to: str):
     stock_check.build_html_from_list(stocklist, stocklist_buffer_html)
     uploaded_to = upload_report_to_s3(
         stocklist_buffer_html,
-        filename='sl',
+        filename='sl' if list_name is None else list_name,
         source_address=reply_to,
         expiry_days=get_config('upload_expiry_days')
     )
@@ -186,6 +189,10 @@ def process_list_export(loaded_data: list, reply_to: str):
         body += '\n\nYour list was also uploaded to a private location at %s' % uploaded_to
         body += '\nThis location will remain constant for all future submissions from your email '
         body += 'address, so feel free to bookmark it.'
+
+        if list_name is None:
+            body += '\nHint: Forward your message with a subject of "List: YOUR CHOICE" to save it under that name.'
+
     send_email_response(reply_to, body, attachments)
 
 
@@ -400,17 +407,20 @@ def invalidate_path_cache(path: str):
     cdn_id = get_config('cdn_distribution_id')
     if cdn_id:
         debug_print('Invalidate "%s" in "%s"' % (path, cdn_id))
-        client = boto3.client('cloudfront')
-        reference = datetime.now().strftime('%Y%m%d%H%M%S')
-        invalidation = client.create_invalidation(
-            DistributionId=cdn_id,
-            InvalidationBatch={
-                'Paths': {
-                    'Quantity': 1,
-                    'Items': [path]
-                },
-                'CallerReference': 'beerbot_upload_' + reference
-            }
-        )
-        print({'invalidation': invalidation})
-        debug_print('end invalidation')
+        try:
+            client = boto3.client('cloudfront')
+            reference = datetime.now().strftime('%Y%m%d%H%M%S')
+            invalidation = client.create_invalidation(
+                DistributionId=cdn_id,
+                InvalidationBatch={
+                    'Paths': {
+                        'Quantity': 1,
+                        'Items': [path]
+                    },
+                    'CallerReference': 'beerbot_upload_' + reference
+                }
+            )
+            print({'invalidation': invalidation})
+            debug_print('end invalidation')
+        except Exception as e:
+            print({'invalidation: Exception': e})
