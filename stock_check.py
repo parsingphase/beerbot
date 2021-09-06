@@ -80,7 +80,7 @@ def generate_stocklist_files(source_data: list, stocklist_output: TextIO = None,
 
 def build_stocklists(source_data: list, stocklist: list = None, style_summary: list = None) -> None:
     """
-    Assemble JSON data from stock list export into lists for subsequent writing to selected fiel format
+    Assemble JSON data from stock list export into lists for subsequent writing to selected file format
 
     Args:
         source_data: Source data unpacked from JSON

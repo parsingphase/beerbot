@@ -23,7 +23,6 @@ import stock_check
 from bot_version import version
 from utils import build_csv_from_list, debug_print, get_config
 
-
 EXPORT_TYPE_LIST = 'list'
 EXPORT_TYPE_CHECKINS = 'checkins'
 
@@ -59,9 +58,7 @@ def lambda_handler(event, context):
                     if export_type == EXPORT_TYPE_LIST:
                         subject = headers['subject'] if 'subject' in headers else ''
                         subject_match = re.search(r'List:\s*(\w.*)', subject)
-                        list_name = subject_match[1]
-                        if list_name:
-                            list_name = list_name.strip()
+                        list_name = subject_match[1].strip() if subject_match else None
                         process_list_export(loaded_data, reply_to, list_name)
 
                     elif export_type == EXPORT_TYPE_CHECKINS:
