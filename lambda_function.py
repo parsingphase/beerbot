@@ -188,7 +188,7 @@ def process_list_export(loaded_data: list, reply_to: str, list_name: str = None)
     if uploaded_to:
         body += '\n\nYour list was also uploaded to a private location at %s' % uploaded_to
         body += '\nThis location will remain constant for all future submissions from your email '
-        body += 'address, so feel free to bookmark it.'
+        body += 'address with the same list name, so feel free to bookmark it.'
 
         if list_name is None:
             body += '\nHint: Forward your message with a subject of "List: YOUR CHOICE" to save it under that name.'
