@@ -229,7 +229,7 @@ def upload_report_to_s3(buffer: StringIO, filename: str, source_address: str, ex
             Tagging='ReportType=Stocklist',
         )
         url_path = relative_path.replace(' ', '+')
-        invalidate_path_cache('/' + url_path)
+        invalidate_path_cache(f'/{path}/*')
         destination = upload_web_root + url_path
         debug_print('Upload to s3: %s, url: %s, expiry %s' % (relative_path, url_path, expires))
     else:
